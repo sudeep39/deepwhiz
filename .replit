@@ -1,6 +1,6 @@
 run = "FINWHIZ_BACKEND_URL= FINWHIZ_BOOTSTRAP_LIBRARY=data/recovery/replit-library-v1.json.gz FINWHIZ_BOOTSTRAP_SHA256=84e0f0b08f6bbe46d3b0891ed6003aeabe568e98e85dcb0923f7ac1c3b07b7d9 AI_PROVIDER=nebius PORT=5000 python run.py serve"
 entrypoint = "run.py"
-modules = ["python-3.12", "web", "nodejs-22"]
+modules = ["python-3.12", "nodejs-20", "web"]
 
 [deployment]
 deploymentTarget = "vm"
