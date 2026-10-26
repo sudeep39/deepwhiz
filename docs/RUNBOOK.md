@@ -1,6 +1,6 @@
 # Run, evaluate and recover
 
-Run commands from the FinWhiz root with Python >=3.12 and an activated virtual environment. See [Python migration and rollback](PYTHON_MIGRATION.md) before adopting existing data. Optional npm aliases use the local .venv and require Node >=22. Keep keys in `.env` or server environment secrets; never paste them into code or commit them. Pinecone uses its API key; there is no extra connection password.
+Run commands from the DeepWhiz root with Python >=3.12 and an activated virtual environment. See [Python migration and rollback](PYTHON_MIGRATION.md) before adopting existing data. Optional npm aliases use the local .venv and require Node >=22. Keep keys in `.env` or server environment secrets; never paste them into code or commit them. Pinecone uses its API key; there is no extra connection password.
 
 ## Application
 
@@ -59,3 +59,28 @@ python run.py restore --source=.backups/runtime-snapshot --to=.runtime-restored
 ```
 
 Both destinations must be empty. Checksums and filenames are verified before restore; existing data is never overwritten. Set FINWHIZ_DATA_DIR to the restored directory and restart. This restores source/state/cache, not deleted Pinecone vectors or namespaces. Retain the original sources and provider index; reingest if remote vectors were lost. Store a protected copy of backups off the deployment disk. Verify actual hosted durability with a restart/redeploy-and-restore drill before relying on it.
+
+
+## Rollout health and proxy configuration
+
+Use `GET /api/health` for process liveness and `GET /api/ready` for readiness.
+Readiness returns HTTP 503 until storage, a configured provider, production access
+control and the ingestion supervisor are ready. It checks configured credentials,
+not the provider account's quota or live availability. Do not expose its checks as
+a guarantee of answer accuracy.
+
+Production/Replit requires `APP_PASSWORD` with at least 12 characters; prefer a
+long generated secret. Browser credentials stay in page memory and must be entered
+after reload. TLS must terminate at a trusted ingress. If the ingress preserves a
+public origin differing from the backend origin, configure an exact JSON array,
+for example `ALLOWED_ORIGINS=["https://research.example.com"]`. This is mutation
+origin validation, not an open CORS policy. Arbitrary forwarded host headers are
+not accepted as authorization. Configure Uvicorn/proxy trust for the actual ingress;
+never trust forwarded headers from unrestricted clients.
+
+`SEC_IMPORT_TIMEOUT_SECONDS=90` limits a complete import (maximum setting 100).
+For large requests that exceed the budget, request fewer reporting periods.
+The download reader enforces per-response and existing batch limits, and failed
+imports remove staged source blobs. Retry only after the earlier request has ended.
+
+Before external rollout, complete the remaining gates in [the current review](CODE_REVIEW.md).

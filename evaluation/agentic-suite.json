@@ -1,0 +1,113 @@
+{
+  "version": 1,
+  "description": "Paired agentic vs single-pass RAG. Load required source filings before execution; labels require manual verification.",
+  "cases": [
+    {
+      "id": "single-quarter",
+      "question": "What was Tesla total revenue in Q2 2026?",
+      "tickers": [
+        "TSLA"
+      ],
+      "expectedStatus": "answered",
+      "forbiddenFilingYears": [
+        2025
+      ],
+      "evidenceLabels": []
+    },
+    {
+      "id": "quarter-comparison",
+      "question": "Compare Tesla total revenue and cost of revenue in Q1 and Q2 2026. Show the absolute and percentage changes with sources.",
+      "tickers": [
+        "TSLA"
+      ],
+      "expectedStatus": "answered",
+      "forbiddenFilingYears": [
+        2025
+      ],
+      "evidenceLabels": []
+    },
+    {
+      "id": "prior-year",
+      "question": "Compare Tesla total revenue and cost of revenue in Q2 2026 versus Q2 2025.",
+      "tickers": [
+        "TSLA"
+      ],
+      "expectedStatus": "answered",
+      "forbiddenFilingYears": [],
+      "evidenceLabels": []
+    },
+    {
+      "id": "multi-company",
+      "question": "Compare Apple and Microsoft revenue and net income in fiscal Q2 2026. Explain differences in fiscal period ends.",
+      "tickers": [
+        "AAPL",
+        "MSFT"
+      ],
+      "expectedStatus": "answered",
+      "forbiddenFilingYears": [],
+      "evidenceLabels": []
+    },
+    {
+      "id": "narrative",
+      "question": "What disclosed drivers explain Tesla automotive revenue changes in Q2 2026? Distinguish facts from interpretation.",
+      "tickers": [
+        "TSLA"
+      ],
+      "expectedStatus": "answered",
+      "forbiddenFilingYears": [
+        2025
+      ],
+      "evidenceLabels": []
+    },
+    {
+      "id": "year-end-derivation",
+      "question": "Derive Tesla Q4 2025 revenue and cost of revenue using annual and nine-month figures. State the calculation and accounting basis.",
+      "tickers": [
+        "TSLA"
+      ],
+      "expectedStatus": "answered",
+      "forbiddenFilingYears": [],
+      "evidenceLabels": []
+    },
+    {
+      "id": "ambiguous",
+      "question": "What is profit?",
+      "tickers": [
+        "TSLA"
+      ],
+      "expectedStatus": "needs_clarification",
+      "forbiddenFilingYears": [],
+      "evidenceLabels": []
+    },
+    {
+      "id": "missing-future",
+      "question": "Compare Tesla revenue in Q1 and Q2 2035.",
+      "tickers": [
+        "TSLA"
+      ],
+      "expectedStatus": "insufficient_evidence",
+      "forbiddenFilingYears": [],
+      "evidenceLabels": []
+    },
+    {
+      "id": "unsupported-prediction",
+      "question": "Predict the Tesla stock price tomorrow.",
+      "tickers": [
+        "TSLA"
+      ],
+      "expectedStatus": "insufficient_evidence",
+      "forbiddenFilingYears": [],
+      "evidenceLabels": []
+    },
+    {
+      "id": "unsupported-source",
+      "question": "Summarize Tesla earnings call transcript comments about demand.",
+      "tickers": [
+        "TSLA"
+      ],
+      "expectedStatus": "insufficient_evidence",
+      "forbiddenFilingYears": [],
+      "evidenceLabels": []
+    }
+  ]
+}

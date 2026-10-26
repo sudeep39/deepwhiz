@@ -17,7 +17,7 @@ for (const company of catalog.companies) {
       try { bytes = await readFile(target); } catch (error) { if (error.code !== 'ENOENT') throw error; }
       if (!bytes) {
         for (let attempt = 0; attempt < 3; attempt++) {
-          const response = await fetch(filing.url, { headers: { 'User-Agent': process.env.SEC_USER_AGENT || 'Finwhiz local research application', Accept: 'text/html' }, signal: AbortSignal.timeout(60000) });
+          const response = await fetch(filing.url, { headers: { 'User-Agent': process.env.SEC_USER_AGENT || 'DeepWhiz local research application', Accept: 'text/html' }, signal: AbortSignal.timeout(60000) });
           if (response.ok) { bytes = Buffer.from(await response.arrayBuffer()); break; }
           if (![429, 500, 502, 503, 504].includes(response.status) || attempt === 2) throw new Error(`HTTP ${response.status}`);
           await new Promise(resolve => setTimeout(resolve, 2000 * (attempt + 1)));

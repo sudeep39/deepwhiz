@@ -24,6 +24,18 @@ access the web, execute code, or perform writes. Do not invent values or source
 IDs. query is empty unless searching; source_ids is empty unless reading tables.
 missing_evidence contains only short names of missing facts, not reasoning or
 an answer. The host validates facts, computes arithmetic and checks citations.
+researchTasks contains the task checklist and evidence progress. Evidence_found
+does not prove a metric is supported; inspect the actual excerpts/facts. Target
+unresolved tasks before answering. task_id links an action to an existing task.
+For search, target_tickers and filing_dates can narrow the authorized scope;
+retrieval_mode chooses hybrid, lexical or dense and top_k is between 1 and 15.
+Do not use a target pair outside resolvedScope.filings. Empty targets mean the
+authorized scope. Change query or retrieval mode if the previous tool found no
+new evidence. You cannot select a different model or override the host budget.
+Validation observations contain actual failed answer checks. Reconsider your
+earlier sufficiency decision: search for a missing value/driver or read its
+table when evidence is absent. If evidence already supports the claim and only
+wording or citations need correction, choose answer so the host can repair it.
 """
 
 
@@ -39,6 +51,8 @@ def assess(provider, question, scope, evidence, observations):
     payload = dict(question=question, resolvedScope=scope,
                    observations=observations,
                    missingCoverage=evidence.get('missingCoverage', []),
+                   researchTasks=[{k: t.get(k) for k in ('id','ticker','period','metric','status','source_ids')}
+                                  for t in evidence.get('researchTasks', [])],
                    sources=[{k: s.get(k) for k in ('id', 'ticker', 'report_date', 'chunk_type', 'section_path')}
                             | {'excerpt': s['text'][:1600]} for s in evidence.get('sources', [])],
                    financialFacts=facts_payload(evidence.get('sources', [])))
@@ -51,6 +65,14 @@ def assess(provider, question, scope, evidence, observations):
         with operation_budget(seconds):
             decision = AgentDecision.model_validate(provider.structured(SYSTEM, payload, AgentDecision)).model_dump()
         allowed = {s['id']: s for s in evidence.get('sources', [])}
+        tasks = {t['id'] for t in evidence.get('researchTasks', [])}
+        if decision.get('task_id') and decision['task_id'] not in tasks:
+            return None, 'invalid_tool_arguments'
+        pairs = {(f['ticker'], f['reportDate']) for f in (scope or {}).get('filings', [])}
+        tickers = decision.get('target_tickers') or (scope or {}).get('tickers', [])
+        dates = decision.get('filing_dates') or (scope or {}).get('filingDates', [])
+        if pairs and (not set(tickers).issubset({t for t, _ in pairs}) or not set(dates).issubset({d for _, d in pairs}) or not any(t in tickers and d in dates for t, d in pairs)):
+            return None, 'invalid_tool_arguments'
         if decision['action'] == 'search' and (not decision['query'].strip() or decision['source_ids']):
             return None, 'invalid_tool_arguments'
         if decision['action'] == 'read_table' and (
@@ -68,7 +90,9 @@ def assess(provider, question, scope, evidence, observations):
 
 def action_key(decision):
     if decision['action'] == 'search':
-        return 'search:' + re.sub(r'\s+', ' ', decision['query'].strip()).casefold()
+        return 'search:' + compact([re.sub(r'\s+', ' ', decision['query'].strip()).casefold(),
+                                   sorted(decision.get('target_tickers', [])), sorted(decision.get('filing_dates', [])),
+                                   decision.get('retrieval_mode', 'hybrid'), decision.get('top_k', 5)])
     return 'read_table:' + ','.join(sorted(set(decision['source_ids'])))
 
 

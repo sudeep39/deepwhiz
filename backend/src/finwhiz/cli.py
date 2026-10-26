@@ -33,11 +33,13 @@ from .storage import Jobs, Storage, now, runtime_lock
 
 
 def parser():
-    command = argparse.ArgumentParser(description="FinWhiz Python backend and operator tools")
+    command = argparse.ArgumentParser(description="DeepWhiz Python backend and operator tools")
     command.add_argument(
         "command",
         choices=[
             "serve",
+            'agent-evaluate',
+            'agent-score-reviews',
             "recover-library",
             "library-inventory",
             "fiscal-metadata-plan",
@@ -263,6 +265,15 @@ def export_project(destination):
 
 
 def execute(args, settings):
+    if args.command == 'agent-score-reviews':
+        from .agent_evaluation import score_agent_reviews
+        if not args.run:
+            raise AppError('Specify --run=AGENT_EVALUATION_DIRECTORY.')
+        return score_agent_reviews(args.run)
+    if args.command == 'agent-evaluate':
+        from .agent_evaluation import run_agent_evaluation
+        return run_agent_evaluation(settings, args.queries, args.to or ROOT/'artifacts/agent-evals'/str(uuid.uuid4()),
+                                    args.apply,args.provider,args.repetitions)
     if args.command == 'recover-library':
         from .bootstrap import recover_empty_library
         path = args.source or settings.finwhiz_bootstrap_library

@@ -12,7 +12,7 @@ def register_routes(app, *, workspace, documents, research, maintenance, fallbac
 
     for area, handler, paths in [
         ('workspace', workspace, {'/api/health': 'GET', '/api/state': 'GET', '/api/operations': 'GET'}),
-        ('documents', documents, {'/api/uploads': 'POST', '/api/jobs/{job_id}/retry': 'POST', '/api/sources/{source_id}': 'GET'}),
+        ('documents', documents, {'/api/sec/import': 'POST', '/api/uploads': 'POST', '/api/jobs/{job_id}/retry': 'POST', '/api/sources/{source_id}': 'GET'}),
         ('maintenance', maintenance, {'/api/jobs/{job_id}/deduplicate': 'POST'}),
         ('research', research, {'/api/chat': 'POST', '/api/scope': 'POST'}),
     ]:

@@ -11,6 +11,7 @@ import httpx
 from .config import ROOT, AppError, digest
 from .documents import extract_html
 from .storage import now
+from .telemetry import remaining
 
 
 def load(path):
@@ -24,11 +25,11 @@ def write(path, value):
     temporary.replace(path)
 
 
-def select_filings(recent, cik, as_of, periods=4):
+def select_filings(recent, cik, as_of, periods=4, forms=("10-K", "10-Q")):
     rows = []
     for i, form in enumerate(recent["form"]):
         if (
-            form not in ("10-K", "10-Q")
+            form not in forms
             or not recent["reportDate"][i]
             or recent["filingDate"][i] > as_of
             or recent["reportDate"][i] > as_of
@@ -60,20 +61,34 @@ def select_filings(recent, cik, as_of, periods=4):
 def sec_request(url, settings, binary=False):
     if not settings.sec_user_agent or "@" not in settings.sec_user_agent:
         raise AppError("Configure SEC_USER_AGENT with your app name and contact email.")
-    with httpx.Client(timeout=60, follow_redirects=False) as client:
-        for attempt in range(3):
-            response = client.get(
-                url,
-                headers={
-                    "User-Agent": settings.sec_user_agent,
-                    "Accept": "text/html" if binary else "application/json",
-                },
-            )
-            if response.is_success:
-                return response.content if binary else response.json()
-            if response.status_code not in (429, 500, 502, 503, 504) or attempt == 2:
-                raise AppError(f"SEC HTTP {response.status_code}; review not marked complete.")
-            time.sleep(2 * (attempt + 1))
+    limit = (20 if binary else 8) * 1024 * 1024
+    try:
+        with httpx.Client(follow_redirects=False) as client:
+            for attempt in range(3):
+                with client.stream('GET', url, timeout=remaining(20), headers={
+                    'User-Agent': settings.sec_user_agent,
+                    'Accept': 'text/html' if binary else 'application/json',
+                }) as response:
+                    if response.is_success:
+                        data = bytearray()
+                        for chunk in response.iter_bytes(chunk_size=65536):
+                            remaining(20)
+                            if len(data) + len(chunk) > limit:
+                                raise AppError('SEC response exceeds the download size limit. Request a smaller filing.', 413)
+                            data.extend(chunk)
+                        if binary:
+                            return bytes(data)
+                        try:
+                            return json.loads(data)
+                        except (ValueError, UnicodeDecodeError):
+                            raise AppError('SEC returned an invalid data response. Retry later.') from None
+                    if response.status_code not in (429, 500, 502, 503, 504) or attempt == 2:
+                        raise AppError(f'SEC HTTP {response.status_code}; review not marked complete.')
+                time.sleep(min(2 * (attempt + 1), remaining(20)))
+    except httpx.TimeoutException:
+        raise AppError('SEC download timed out. Request fewer reports and retry.', 504) from None
+    except httpx.TransportError:
+        raise AppError('SEC could not be reached. Retry later.') from None
 
 
 def csv_export(companies, experiment=False):

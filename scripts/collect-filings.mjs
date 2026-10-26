@@ -18,7 +18,7 @@ export function selectFilings(recent, cik, asOf, periods = 4) {
 
 async function request(url) {
   for (let attempt = 0; attempt < 3; attempt++) {
-    const response = await fetch(url, { headers: { 'User-Agent': process.env.SEC_USER_AGENT || 'Finwhiz local research application', Accept: 'application/json' }, signal: AbortSignal.timeout(30000) });
+    const response = await fetch(url, { headers: { 'User-Agent': process.env.SEC_USER_AGENT || 'DeepWhiz local research application', Accept: 'application/json' }, signal: AbortSignal.timeout(30000) });
     if (response.ok) return response.json();
     if (![429, 500, 502, 503, 504].includes(response.status) || attempt === 2) throw new Error(`SEC HTTP ${response.status}: ${url}`);
     await new Promise(resolve => setTimeout(resolve, (attempt + 1) * 2000));

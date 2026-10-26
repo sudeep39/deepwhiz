@@ -22,7 +22,7 @@ export function createFrontendServer(backend = 'http://127.0.0.1:8000', { remote
     const pathname = new URL(request.url, 'http://localhost').pathname;
     if (pathname.startsWith('/api/') || (remoteAssets && assets.has(pathname) && ['GET', 'HEAD'].includes(request.method))) {
       const headers = { ...request.headers, host: target.host };
-      if (remoteAssets && request.headers.origin) {
+      if (request.headers.origin) {
         let origin;
         try { origin = new URL(request.headers.origin); } catch { /* reject below */ }
         if (!origin || origin.protocol !== 'http:' || origin.host !== request.headers.host) {
@@ -30,12 +30,13 @@ export function createFrontendServer(backend = 'http://127.0.0.1:8000', { remote
           response.end(JSON.stringify({ error: 'Origin not allowed.' }));
           return;
         }
-        // Older hosted APIs validate Origin against their own Host only.
-        // Check the browser origin locally before translating it upstream.
+        // Validate the browser's origin locally before translating it upstream.
         headers.origin = target.origin;
       }
-      // Preserve the browser origin for the backend's POST origin check.
-      headers['x-forwarded-host'] = request.headers.host;
+      // Rebuild forwarding metadata from this connection, never from caller input.
+      delete headers['x-forwarded-host'];
+      headers['x-forwarded-for'] = request.socket.remoteAddress;
+      headers['x-forwarded-proto'] = target.protocol.slice(0, -1);
       const transport = target.protocol === 'https:' ? https : http;
       const upstream = transport.request({
         hostname: target.hostname, port: target.port || (target.protocol === 'https:' ? 443 : 80),

@@ -91,6 +91,7 @@ def create_app(
                     supervise(jobs, store, settings, worker_target, processing_timeout_seconds)
                 )
             )
+            app.state.worker_task = task
             try:
                 yield
             finally:
@@ -113,6 +114,27 @@ def create_app(
     app.state.active_mutations = 0
     app.state.maintenance_task = None
 
+    @app.get('/api/ready', include_in_schema=False)
+    async def readiness():
+        """Report configuration, storage and worker readiness without exposing secrets."""
+        def database_ok():
+            if not jobs.path.is_file():
+                return False
+            with jobs.connection(write=False) as db:
+                db.execute('SELECT COUNT(*) FROM jobs').fetchone()
+                return db.execute('PRAGMA quick_check').fetchone()[0] == 'ok'
+        try:
+            storage_ok = await asyncio.wait_for(asyncio.to_thread(database_ok), 2)
+        except Exception:
+            storage_ok = False
+        production = bool(settings.replit_deployment or settings.node_env == 'production')
+        checks = dict(storage=storage_ok, credentials=any(settings.configured(settings.provider(p)) for p in ('openai', 'nebius')),
+                      accessControl=not production or len(settings.app_password) >= 12,
+                      maintenance=not app.state.maintenance,
+                      worker=disable_workers or bool(getattr(app.state, 'worker_task', None) and not app.state.worker_task.done()))
+        ready = all(checks.values())
+        return response(dict(ready=ready, checks=checks), 200 if ready else 503)
+
     @app.middleware("http")
     async def security(request, call_next):
         request_id = str(uuid.uuid4())
@@ -123,7 +145,7 @@ def create_app(
         try:
             request.state.ai = settings.provider(request.headers.get("x-ai-provider"))
             selected = True
-            if request.url.path.startswith("/api/") and request.url.path != "/api/health":
+            if request.url.path.startswith("/api/") and request.url.path not in ("/api/health", '/api/ready'):
                 if (
                     settings.replit_deployment or settings.node_env == "production"
                 ) and not settings.app_password:
@@ -131,6 +153,8 @@ def create_app(
                         "Set APP_PASSWORD in deployment secrets before enabling this shared workspace.",
                         503,
                     )
+                if (settings.replit_deployment or settings.node_env == 'production') and len(settings.app_password) < 12:
+                    raise AppError('Set APP_PASSWORD to at least 12 characters before enabling this shared workspace.', 503)
                 client = request.client.host if request.client else "local"
                 current = time.monotonic()
                 for key in list(auth_limits):
@@ -146,13 +170,12 @@ def create_app(
                     auth_limits[client] = start, count + 1
                     raise AppError("Enter your workspace password.", 401)
                 origin = request.headers.get("origin")
-                if (
-                    request.method == "POST"
-                    and origin
-                    and urlparse(origin).netloc
-                    not in (request.headers.get("host"), request.headers.get("x-forwarded-host"))
-                ):
-                    raise AppError("Origin not allowed.", 403)
+                if request.method in ('POST', 'PUT', 'PATCH', 'DELETE') and origin:
+                    parsed = urlparse(origin)
+                    same_origin = f'{request.url.scheme}://{request.headers.get("host", "")}'
+                    allowed = {same_origin, *(value.rstrip('/') for value in settings.allowed_origins)}
+                    if parsed.scheme not in ('http', 'https') or parsed.path or parsed.query or parsed.fragment or origin not in allowed:
+                        raise AppError('Origin not allowed.', 403)
             if request.method == 'POST' and request.url.path.startswith('/api/'):
                 if app.state.maintenance:
                     raise AppError('Library maintenance is running. Retry when it finishes.', 409)

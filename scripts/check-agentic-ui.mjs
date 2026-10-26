@@ -1,0 +1,37 @@
+import {chromium} from 'playwright-core';
+import assert from 'node:assert/strict';
+const browser=await chromium.launch({channel:'msedge',headless:true});
+try{
+ const page=await browser.newPage({viewport:{width:1440,height:1000}}),errors=[];
+ page.on('pageerror',e=>errors.push(e.message));
+ const scope={status:'resolved',label:'TSLA Q1 vs Q2 2026',requestedPeriods:['2026-Q1','2026-Q2']};
+ const docs=['2026-03-31','2026-06-30'].map(reportDate=>({id:reportDate,ticker:'TSLA',company:'Tesla',reportDate,form:'10-Q',strategies:['fixed','semantic']}));
+ await page.route('**/api/state',r=>r.fulfill({json:{companies:[{ticker:'TSLA',name:'Tesla',periods:docs.map(d=>({...d,ready:true}))}],documents:docs,jobs:[],config:{providersConfigured:true,aiProvider:'nebius',aiProviders:[]}}}));
+ await page.route('**/api/scope',r=>r.fulfill({json:scope}));
+ const titles=['Resolve question and filing scope','Retrieve scoped evidence','Choose the next action','Run additional evidence tool','Compose an evidence-based answer','Check citations and calculations'];
+ const executionPath={agentic:true,steps:titles.map((title,i)=>({id:`step-${i+1}`,title,control:i===2?'agent':i===3?'agent_tool':'application',operations:i===2?[{stage:'evidence_assessment',model:'test-agent-model',provider:'nebius',attempt:1,schema:'AgentDecision',durationMs:30,outcome:'ok'}]:i===3?[{stage:'vector_db_call',database:'Pinecone',index:'test-index',namespace:'test-corpus',topK:5,matches:3,filters:{ticker:{$eq:'TSLA'}},durationMs:10,outcome:'completed'}]:[],status:'completed',durationMs:20,details:[i===3?'Search: cost of revenue':'Recorded outcome'],filings:i===1?docs.map(d=>({ticker:d.ticker,reportDate:d.reportDate})):[],lookups:i===1?docs.map(d=>({ticker:d.ticker,reportDate:d.reportDate,durationMs:5,outcome:'ok'})):[]}))};
+ await page.route('**/api/chat',r=>r.fulfill({json:{answer:'Comparison completed.',status:'answered',sources:[],scope,chart:{type:'none'},researchPlan:{tasks:[{id:'T1',ticker:'TSLA',period:'2026-Q1',metric:'revenue',status:'fact_located',objective:'Find revenue'}]},financialEvidence:[{ticker:'TSLA',period:'2026-Q1',metric:'revenue',basis:'quarterly',segment:'as_disclosed',value:100,unit:'millions',source_id:'S1'}],executionPath}}));
+ await page.goto((process.env.FINWHIZ_BROWSER_BASE||'http://127.0.0.1:3101')+'/');
+ await page.fill('#question','Compare cost and revenue in Q1 versus Q2 2026 for Tesla');await page.click('#send-button');
+ const trigger=page.getByRole('button',{name:'Execution path',exact:false});await trigger.waitFor();
+ assert.equal(await page.locator('#execution-dialog').isVisible(),false);
+ await trigger.hover();assert.equal(await page.locator('.execution-preview').isVisible(),true);
+ assert.equal(await page.locator('.execution-preview .execution-node').count(),4);
+ await trigger.click();assert.equal(await page.locator('#execution-dialog').isVisible(),true);
+ assert.equal(await page.locator('#execution-flow .execution-node').count(),6);
+ assert.match(await page.locator('.research-task-summary').textContent(),/T1.*TSLA.*2026-Q1/);
+ assert.equal(await page.locator('.financial-evidence').count(),1);
+ assert.equal(await page.locator('.execution-branches li').count(),2);
+ assert.equal(await page.locator('#execution-flow .execution-control.agent').count(),1);
+ await page.locator('#execution-flow .execution-calls summary').first().click();
+ assert.match(await page.locator('#execution-flow').textContent(),/test-agent-model/);
+ assert.match(await page.locator('#execution-flow').textContent(),/Returned matches/);
+ assert.equal(await page.locator('#execution-flow .execution-node').first().evaluate(el=>getComputedStyle(el,'::after').content),'""');
+ assert.equal((await page.locator('#execution-flow').textContent()).includes('2025'),false);
+ await page.keyboard.press('Escape');await trigger.focus();await page.keyboard.press('Enter');
+ assert.equal(await page.locator('#execution-dialog').isVisible(),true);
+ await page.setViewportSize({width:390,height:844});
+ assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
+ assert.deepEqual(errors,[]);
+ console.log('Passed: hidden by default, hover preview, click, keyboard, actual lookup branches, mobile width.');
+}finally{await browser.close();}

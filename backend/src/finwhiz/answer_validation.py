@@ -1,10 +1,31 @@
 """Evidence checks and deterministic rendering, independent of graph orchestration."""
 
 import re
+from datetime import datetime
 from .config import AppError
 from .finance import calculate, supports_number, finalize_margins, empty_chart
 from .fact_validation import bound_value, calculation_bound, numeric_context, ordered_periods
 from .financial_facts import table_facts
+
+
+def calendar_date_spans(text):
+    """Recognize complete, valid dates without exempting nearby financial values."""
+    months = r'(?:Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|Jun(?:e)?|Jul(?:y)?|Aug(?:ust)?|Sep(?:tember)?|Sept|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?)'
+    formats = [(rf'\b{months}\.?\s+\d{{1,2}},?\s+20\d{{2}}\b', ('%B %d %Y', '%b %d %Y')),
+               (r'\b20\d{2}-\d{2}-\d{2}\b', ('%Y-%m-%d',)),
+               (r'\b\d{1,2}/\d{1,2}/20\d{2}\b', ('%m/%d/%Y',))]
+    spans = []
+    for pattern, parsers in formats:
+        for match in re.finditer(pattern, text, re.I):
+            value = re.sub(r'\bSept\b', 'Sep', match[0], flags=re.I).replace(',', '').replace('.', '')
+            for parser in parsers:
+                try:
+                    datetime.strptime(value, parser)
+                    spans.append(match.span())
+                    break
+                except ValueError:
+                    continue
+    return spans
 
 
 def referenced_sources(answer, sources):
@@ -92,13 +113,22 @@ def validation_issues(answer, sources, validate_numeric=True):
     inline = re.findall(r"\[(S\d+)\]", answer["answer"])
     issues = []
     if answer["status"] == "answered" and validate_numeric:
-        for sentence in re.split(r"(?<=[.!?])\s+(?=[A-Z\[])", answer["answer"]):
+        financial_text = re.sub(r'(?m)^\s*(?:[-*]\s+)?\d+[.)]\s+', '', answer['answer'])
+        for sentence in re.split(r"(?<=[.!?])\s+(?=[A-Z\[])", financial_text):
             ids = re.findall(r"\[(S\d+)\]", sentence)
             if not ids:
                 ids = answer["citation_ids"]
             text = re.sub(r"\[S\d+\]", "", sentence)
+            dates = calendar_date_spans(text)
             for match in re.finditer(r"(?<![A-Za-z\d])\(?-?\d[\d,]*(?:\.\d+)?%?\)?", text):
-                raw = match[0]
+                raw = match[0].rstrip(',')
+                if any(start <= match.start() and match.start() + len(raw) <= end for start, end in dates):
+                    continue
+                # Filing form names and numbered list markers are not financial values.
+                if re.match(r'10-[KQ]\b', text[match.start():], re.I):
+                    continue
+                if re.fullmatch(r'\d+', raw) and re.fullmatch(r'\s*(?:[-*]\s+)?', text[:match.start()]) and re.match(r'[.)]\s', text[match.end():]):
+                    continue
                 # Period labels identify the claim; they are not financial values.
                 if re.fullmatch(r'20\d{2}', raw) or (match.start() and text[match.start()-1:match.start()].upper() == 'Q'):
                     continue
@@ -138,6 +168,47 @@ def validation_issues(answer, sources, validate_numeric=True):
         if not valid(point['source_ids']) or bound_value(sources, point['source_ids'], point['value'], point['label'], scale[1].lower() if scale else None) is False or not supports_number(cited(point['source_ids']), point['value']):
             issues.append('Chart values must be literal numbers in their cited evidence; omit an unsupported chart.')
     return list(dict.fromkeys(issues))
+
+
+def supported_repair(sentences, calculations, sources):
+    """Retain independently checked repair units; never reuse an invalid whole answer."""
+    kept = []
+    for sentence in sentences:
+        ids = sentence['source_ids']
+        candidate = dict(status='answered', answer=sentence['text'] + ' ' + ' '.join(f'[{i}]' for i in ids),
+                         citation_ids=ids, calculations=[], chart=empty_chart())
+        # A citation supplied by the model is not proof on its own. Require an
+        # exact disclosed sentence for qualitative claims retained after failure.
+        text = re.sub(r'\s+', ' ', sentence['text']).strip().rstrip('.')
+        excerpts = [re.sub(r'\s+', ' ', s['text']) for s in sources if s['id'] in ids]
+        if text and any(text.casefold() in excerpt.casefold() for excerpt in excerpts) and not validation_issues(candidate, sources):
+            kept.append(candidate)
+    result = dict(status='answered', answer=' '.join(c['answer'] for c in kept),
+                  citation_ids=list(dict.fromkeys(i for c in kept for i in c['citation_ids'])),
+                  calculations=[], chart=empty_chart())
+    for calculation in calculations:
+        ids = calculation['source_ids']
+        candidate = dict(status='answered', answer='Disclosed inputs are shown in the calculation panel. ' + ' '.join(f'[{i}]' for i in ids),
+                         citation_ids=ids, calculations=[calculation], chart=empty_chart())
+        if not validation_issues(candidate, sources):
+            result['calculations'].append(calculation)
+    if not kept:
+        if not result['calculations']:
+            return None
+        result['citation_ids'] = list(dict.fromkeys(i for c in result['calculations'] for i in c['source_ids']))
+        result['answer'] = 'Disclosed inputs are shown in the calculation panel. ' + ' '.join(f'[{i}]' for i in result['citation_ids'])
+    return finalize(result, sources)
+
+
+def supported_draft(answer, sources):
+    """Salvage only exact checked excerpts and valid calculations after a model timeout."""
+    units = []
+    for fragment in re.split(r'(?<=\])\s+|\n+', answer['answer']):
+        ids = re.findall(r'\[(S\d+)\]', fragment)
+        text = re.sub(r'\[S\d+\]', '', fragment).strip()
+        if ids and text:
+            units.append(dict(text=text, source_ids=ids))
+    return supported_repair(units, answer.get('calculations', []), sources)
 
 
 def finalize(answer, sources):

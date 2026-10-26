@@ -7,5 +7,5 @@ if(existsSync(resolve(process.env.FINWHIZ_DATA_DIR||fileURLToPath(new URL('.runt
 }
 export const server = await createApplication();
 server.listen(Number(process.env.PORT || 3100), process.env.HOST || '0.0.0.0', () => {
-  console.log(`Finwhiz: http://localhost:${server.address().port}`);
+  console.log(`DeepWhiz: http://localhost:${server.address().port}`);
 });

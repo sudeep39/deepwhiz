@@ -1,6 +1,6 @@
-# FinWhiz
+# DeepWhiz
 
-**Live app:** [FinWhiz on Replit](https://fin-whiz.replit.app/)
+**Live app:** [DeepWhiz on Replit (original application)](https://fin-whiz.replit.app/)
 
 Choose **OpenAI** or **Nebius Token Factory** in the top-bar AI provider selector. Selection applies to ingestion, semantic chunking, embeddings, reranking and research. See [provider setup and index commands](docs/AI_PROVIDERS.md). Each provider uses a separate compatible Pinecone embedding space; existing OpenAI documents are preserved.
 
@@ -91,3 +91,41 @@ This creates an independent source root under release with a SHA-256 manifest an
 Replit can import the independent GitHub repository directly. The root .replit config targets a Reserved VM. Configure HTTPS, strong APP_PASSWORD, provider secrets and a verified persistent FINWHIZ_DATA_DIR. Pinecone stores vectors; local files retain queue/source/lexical/cache data. Backup/restore tooling does not guarantee hosted disk durability. This is a trusted shared workspace, not a multi-tenant system.
 
 Source snapshots before both review passes are retained under ignored .backups. No legacy Python source or archived filings were discarded.
+# On-demand SEC reports
+
+Agentic research now includes a scope-checked task plan, targeted hybrid/lexical/dense
+tools, task-linked execution receipts, financial evidence tables and explicit missing
+filing recovery. See [agentic evaluation instructions](evaluation/AGENTIC_EVALS.md)
+for paired single-pass/agentic trials and manual review scoring.
+
+In **Documents → Fetch reports from the SEC**, enter company names or tickers
+separated by commas, semicolons, or new lines (for example, `Tesla, AAPL, Microsoft`).
+Choose **Use the latest** or **Last N quarters**, enter a count, and click
+**Fetch & process**. Ambiguous names return ticker choices; enter the intended
+ticker and submit again. Repeated imports reuse identical reports.
+
+Set `SEC_USER_AGENT=DeepWhiz contact@your-domain.com` in this application's `.env`
+using your actual contact email. Configure the selected AI provider and Pinecone
+as for uploads. SEC retrieval needs no SEC API key. The import downloads reports
+before responding; keep the page open until it confirms they are queued. Parsing
+and indexing then run in the existing background worker.
+
+The selection uses current SEC submissions, not the experiment's historical cutoff.
+It includes 10-Q and 10-K reports, one per reporting period; a 10-K supplies the
+year-end period and remains an annual report. Amendments, 8-K earnings releases,
+and foreign issuer forms are excluded. Fewer available reports produce a warning.
+Limits: 8 companies, 12 periods per company, 32 reports and 100 MB per request,
+20 MB per report. A failed download cancels the batch; retry after fixing the error.
+
+API: `POST /api/sec/import` with
+`{"companies":"Tesla, AAPL","periods":4}` (or `"periods":"latest"`).
+Uses the same authentication and provider header as uploads. Returns resolved
+companies, filing source URLs, warnings, duplicate results, and an ingestion job.
+
+
+Answer repair has its own `ANSWER_REPAIR_TIMEOUT_SECONDS` setting (default 12 seconds), separate from `GENERATION_TIMEOUT_SECONDS` (30 seconds). A repair-stage timeout returns independently checked excerpts or calculations where available, with validation gaps and a timeout warning; otherwise it returns an explicit insufficient-evidence result. Request cancellation and the overall research deadline still stop the request. Valid complete calendar dates are excluded from financial-value checks; adjacent amounts and invalid dates remain checked.
+
+
+Execution paths for new research responses include expandable intermediate outputs: resolved scope, planned tasks, retrieved excerpts, selected actions, unvalidated drafts, repair outputs, and validation results. The delivered response appears last. Evidence snapshots show up to 12 sources with 1,800-character excerpts; long drafts are capped at 12,000 characters, with truncation identified. These are structured outputs, not hidden model reasoning. Output snapshots are excluded from normal application log messages.
+
+Rollout status and implemented hardening are recorded in [the functionality and market-readiness review](docs/CODE_REVIEW.md). This remains a trusted shared workspace. Production requires a strong workspace secret, HTTPS, verified durable storage and restore procedures; public multi-customer use additionally requires individual identity and tenant isolation. Liveness is `/api/health`; configuration/storage readiness is `/api/ready`.

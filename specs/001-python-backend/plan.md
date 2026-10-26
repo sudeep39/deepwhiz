@@ -61,7 +61,7 @@ Freeze source and suite hashes, prompts, model settings, retrieval budgets and p
 
 Reviewed 2026-10-21. These are three shortlisted options, not a measured popularity ranking.
 
-| Tool | Workflow and fit | Assessment for FinWhiz |
+| Tool | Workflow and fit | Assessment for DeepWhiz |
 | --- | --- | --- |
 | [GitHub Spec Kit](https://github.com/github/spec-kit) | Specification, clarification, plan, tasks and consistency analysis | Recommended for explicit migration requirements, traceability and review gates |
 | [OpenSpec](https://github.com/Fission-AI/OpenSpec) | Change proposals, design/spec deltas, tasks and archived completed changes | Good alternative for lightweight continuing changes to an existing codebase |

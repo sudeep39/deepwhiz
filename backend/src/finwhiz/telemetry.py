@@ -53,7 +53,7 @@ class ResearchTrace:
             self.request_id,
             stage,
             duration,
-            details,
+            {k: v for k, v in details.items() if k != 'outputs'},
         )
 
     def metrics(self):

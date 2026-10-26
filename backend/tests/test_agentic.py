@@ -10,7 +10,7 @@ from finwhiz.config import AppError
 from finwhiz.finance import empty_chart
 from finwhiz.ingestion import ingest
 from finwhiz.research import research
-from finwhiz.schemas import AgentDecision, Answer
+from finwhiz.schemas import AgentDecision, AgentPlan, Answer
 from finwhiz.storage import Storage
 from finwhiz.telemetry import ResearchTrace
 from test_workflows import setup_job
@@ -34,13 +34,15 @@ def fixture(settings, monkeypatch, decisions, batches, answer='Revenue was 125 m
     settings = settings.model_copy(update={'finwhiz_data_dir': settings.finwhiz_data_dir / str(uuid.uuid4())})
     store, jobs, job, provider = setup_job(settings)
     ingest(job, store, jobs, provider)
-    provider.settings = settings.model_copy(update={'agentic_rag_enabled': True})
+    provider.settings = settings.model_copy(update={'agentic_rag_enabled': True, 'agent_max_rounds': 2})
     queries, models = [], []
     def retrieve(*args, **kwargs):
         queries.append(dict(question=args[3], tickers=args[4], periods=args[5], **kwargs))
         return deepcopy(batches[min(len(queries)-1, len(batches)-1)])
     monkeypatch.setattr('finwhiz.research.retrieve', retrieve)
     def structured(system, payload, schema, model=None):
+        if schema is AgentPlan:
+            raise AppError('Scripted fallback plan')
         models.append(schema.__name__)
         if schema is AgentDecision:
             result = decisions[min(models.count('AgentDecision')-1, len(decisions)-1)]
@@ -70,6 +72,14 @@ def test_missing_input_triggers_scoped_search_then_validated_answer(settings, mo
     assert models == ['AgentDecision', 'AgentDecision', 'Answer']
     assert result['metrics']['agentRounds'] == 1 and result['metrics']['agentStopReason'] == 'evidence_sufficient'
     assert result['metrics']['agentTools'][0]['newEvidence'] == 1
+    path = result['executionPath']
+    assert path['agentic']
+    assert [step['node'] for step in path['steps']] == [
+        'policy', 'decompose', 'retrieve', 'assess_evidence', 'agent_tool', 'assess_evidence', 'generate', 'validate']
+    tool = next(step for step in path['steps'] if step['node'] == 'agent_tool')
+    assert 'Search: reported revenue' in tool['details']
+    assert tool['filings'] == [{'ticker': 'ACME', 'reportDate': '2025-03-31'}]
+    assert len(path['edges']) == len(path['steps']) - 1
 
 
 def test_no_more_than_two_additional_retrievals(settings, monkeypatch):
@@ -88,10 +98,37 @@ def test_repeated_query_and_no_progress_stop_the_loop(settings, monkeypatch):
         [evidence(source('cost', 'Costs were 100 million.')), evidence(source('rev', 'Revenue was 125 million.'))])
     assert run()['metrics']['agentStopReason'] == 'repeated_action'
     assert len(queries) == 2
-    run, _, queries, _ = fixture(settings, monkeypatch, [decision('search', 'cost details')],
+    run, _, queries, _ = fixture(settings, monkeypatch, [decision('search', 'cost details'), decision('search', 'cost table')],
         [evidence(source('cost', 'Costs were 100 million.'))], answer='Costs were 100 million [S1].')
     assert run()['metrics']['agentStopReason'] == 'no_new_evidence'
-    assert len(queries) == 2
+    assert len(queries) == 3
+
+
+def test_agent_plan_precedes_retrieval_and_targeted_tools_are_applied(settings, monkeypatch):
+    targeted = {**decision('search','reported revenue'), 'task_id':'T1', 'target_tickers':['ACME'],
+                'filing_dates':['2025-03-31'], 'retrieval_mode':'lexical', 'top_k':3}
+    run, provider, queries, _ = fixture(settings, monkeypatch, [targeted, decision()],
+        [evidence(source('cost','Costs were 100 million.')), evidence(source('rev','Revenue was 125 million.'))])
+    original=provider.structured
+    def structured(system,payload,schema,model=None):
+        if schema is AgentPlan:
+            return {'tasks':[dict(ticker='ACME',report_date='2025-03-31',period='2025-Q1',metric='revenue',objective='Find quarterly revenue')]}
+        return original(system,payload,schema,model)
+    provider.structured=structured
+    result=run()
+    assert result['researchPlan']['origin']=='agent'
+    assert queries[0]['question']=='Find quarterly revenue'
+    assert queries[1]['retrieval_mode']=='lexical' and queries[1]['top_k']==3
+    assert queries[1]['filing_scope']=={('ACME','2025-03-31')}
+    assert result['researchPlan']['tasks'][0]['status']=='evidence_found'
+
+
+def test_agent_cannot_expand_authorized_targets(settings, monkeypatch):
+    bad={**decision('search','revenue'),'target_tickers':['TSLA'],'filing_dates':['2035-03-31']}
+    run, _, queries, _=fixture(settings,monkeypatch,[bad],
+        [evidence(source('rev','Revenue was 125 million.'))],answer='Revenue was 125 million [S1].')
+    assert run()['metrics']['agentStopReason']=='invalid_tool_arguments'
+    assert len(queries)==1
 
 
 @pytest.mark.parametrize('bad', [decision('read_table', ids=['S999']), {'action': 'execute_code'}, AppError('Unavailable', 504)])

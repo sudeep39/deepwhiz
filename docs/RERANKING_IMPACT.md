@@ -1,4 +1,4 @@
-# FinWhiz: reranking impact analysis
+# DeepWhiz: reranking impact analysis
 
 Measured 16-trial pilot, October 19, 2026 (America/New_York). Four unique questions, four conditions, one observation per question/condition. This is a reduced pilot, not the planned 128-trial evaluation.
 

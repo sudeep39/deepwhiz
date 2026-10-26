@@ -4,7 +4,7 @@ import { resolve, relative, dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createHash } from 'node:crypto';
 const root=fileURLToPath(new URL('../',import.meta.url));
-const destination=join(root,'release',`FinWhiz-${new Date().toISOString().replace(/[:.]/g,'-')}`);
+const destination=join(root,'release',`DeepWhiz-${new Date().toISOString().replace(/[:.]/g,'-')}`);
 const roots=['lib','scripts','docs','evaluation','pinecone'];
 const files=[];
 async function collect(directory){for(const entry of await readdir(join(root,directory),{withFileTypes:true})){

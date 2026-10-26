@@ -15,7 +15,7 @@ from .documents import token_count
 from .transport import JsonTransport
 from .generation import GenerationClient
 from .vector_store import PineconeClient
-from .telemetry import span
+from .telemetry import span, current_trace
 
 
 class Providers(Embeddings):
@@ -99,7 +99,7 @@ class Providers(Embeddings):
                 cached = self.query_cache.get(cache_key)
                 if cached and time.monotonic() - cached[0] < 300:
                     self.query_cache.move_to_end(cache_key)
-                    with span("query_embedding_cache_hit"):
+                    with span("query_embedding_cache_hit", model=self.config.embeddingModel, provider=self.config.provider):
                         return [list(cached[1])]
         key = self.settings.key(self.config)
         if not key:
@@ -114,16 +114,18 @@ class Providers(Embeddings):
             if self.config.provider == "nebius" and purpose == "query"
             else texts
         )
-        result = self.request(
-            self.base + "/embeddings",
-            {
-                "model": self.config.embeddingModel,
-                "dimensions": self.config.dimension,
-                "encoding_format": "float",
-                "input": inputs,
-            },
-            {"Authorization": f"Bearer {key}"},
-        )
+        with span('embedding_model_call', model=self.config.embeddingModel, provider=self.config.provider,
+                  dimensions=self.config.dimension, inputs=len(texts), purpose=purpose):
+            result = self.request(
+                self.base + "/embeddings",
+                {
+                    "model": self.config.embeddingModel,
+                    "dimensions": self.config.dimension,
+                    "encoding_format": "float",
+                    "input": inputs,
+                },
+                {"Authorization": f"Bearer {key}"},
+            )
         if result.get("model") != self.config.embeddingModel or len(result.get("data", [])) != len(
             texts
         ):
@@ -171,7 +173,22 @@ class Providers(Embeddings):
         Used by retrieval, ingestion verification and explicit maintenance.
         path/body determine whether it is read-only; this facade is not itself
         a permission boundary."""
-        return self.index.pinecone(path, body)
+        started = time.monotonic()
+        outcome, result = 'completed', None
+        try:
+            result = self.index.pinecone(path, body)
+            return result
+        except BaseException:
+            outcome = 'unavailable'
+            raise
+        finally:
+            trace = current_trace.get()
+            if trace and path == 'query':
+                trace.record('vector_db_call', (time.monotonic()-started)*1000,
+                             database='Pinecone', index=self.config.indexName,
+                             namespace=body.get('namespace'), topK=body.get('topK'),
+                             filters={k: v for k, v in body.get('filter', {}).items() if k in ('ticker', 'report_date')},
+                             matches=len((result or {}).get('matches', [])), outcome=outcome)
 
     def upsert(self, namespace, records):
         """Delegate vector writes and acknowledgement checks to PineconeClient.

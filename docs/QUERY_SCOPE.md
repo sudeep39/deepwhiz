@@ -1,6 +1,6 @@
 # Question-aware retrieval scope
 
-FinWhiz resolves companies and periods before search. The local/frontend company and period selections remain the starting scope. An explicit question can narrow an all-period or multi-company selection; it cannot silently override a conflicting explicit selection. Clarification messages tell you what to select or specify next.
+DeepWhiz resolves companies and periods before search. The local/frontend company and period selections remain the starting scope. An explicit question can narrow an all-period or multi-company selection; it cannot silently override a conflicting explicit selection. Clarification messages tell you what to select or specify next.
 
 For example, "Tesla Q2 2026" targets TSLA's verified June 30, 2026 filing. "Using Tesla's Q2 2026 filing, what were Q1 and Q2 results?" retains both requested quarters while searching the Q2 filing for quarterly and first-half evidence. The resolver does not calculate financial metrics or guarantee evidence coverage.
 

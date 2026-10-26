@@ -1,6 +1,6 @@
 # Python backend operation and migration
 
-The backend runs in Python with FastAPI, LangChain model interfaces and explicit LangGraph ingestion/research workflows. The existing frontend and public API are preserved. Start with `python run.py serve` from the FinWhiz root after installing `backend/requirements.lock` into a virtual environment. `PORT`, `HOST` and the existing provider variables remain supported. Paths in `FINWHIZ_DATA_DIR` resolve relative to the project root.
+The backend runs in Python with FastAPI, LangChain model interfaces and explicit LangGraph ingestion/research workflows. The existing frontend and public API are preserved. Start with `python run.py serve` from the DeepWhiz root after installing `backend/requirements.lock` into a virtual environment. `PORT`, `HOST` and the existing provider variables remain supported. Paths in `FINWHIZ_DATA_DIR` resolve relative to the project root.
 
 ## Setup
 

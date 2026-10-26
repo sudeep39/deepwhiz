@@ -7,7 +7,7 @@ Related documents: [Technical plan](plan.md), [Increment tracker](tasks.md)
 
 ## Purpose
 
-Replace FinWhiz's Node.js backend with a readable, modular Python backend while preserving the existing browser experience and financial research behavior. Use LangChain for AI component interfaces and LangGraph for explicit ingestion and research workflows. Deliver the migration in increments that can be reviewed, tested and resumed independently.
+Replace DeepWhiz's Node.js backend with a readable, modular Python backend while preserving the existing browser experience and financial research behavior. Use LangChain for AI component interfaces and LangGraph for explicit ingestion and research workflows. Deliver the migration in increments that can be reviewed, tested and resumed independently.
 
 This document defines required outcomes. The plan records proposed implementation choices. The tracker records execution and evidence. Implementation was authorized on 2026-10-21. The user subsequently chose offline-only verification. No specification toolkit was installed; the repository uses the spec/plan/tasks workflow directly.
 
@@ -21,7 +21,7 @@ Excluded: frontend framework adoption, visual redesign, OCR, new document types,
 
 ## Existing baseline
 
-Source references are relative to the FinWhiz root:
+Source references are relative to the DeepWhiz root:
 
 - `lib/web-server.mjs`: routing, authentication, upload handling and worker queue.
 - `lib/ingest.worker.mjs`, `lib/chunking.mjs`, `lib/filing-metadata.mjs`: ingestion and parsing.

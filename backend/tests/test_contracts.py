@@ -25,7 +25,8 @@ def test_frozen_http_contracts(settings):
                 headers={"Authorization": "Bearer baseline-password", **request["headers"]},
             )
             assert result.status_code == case["status"], case["name"]
-            assert result.json() == case["body"], case["name"]
+            expected=case['body']
+            assert result.json() == expected, case["name"]
             for key, value in case["headers"].items():
                 assert result.headers.get(key) == value, (case["name"], key)
 

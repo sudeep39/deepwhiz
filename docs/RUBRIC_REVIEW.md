@@ -6,7 +6,7 @@ Reviewed against the nine-page **Week 2 Project Handout ( Oct 2026 ).pdf**, supp
 
 ## Scope and verdict
 
-FinWhiz is a suitable Project 2 implementation: Financial Document Intelligence, table-aware hybrid retrieval, for investment analysts. NVIDIA and Tesla across eight reported fiscal periods each provide multi-document, table, temporal, and comparison questions. Fiscal quarter ends differ between issuers. Each company contributes two 10-Ks and six 10-Qs: a 10-K represents a year, not a standalone fourth quarter. Q4 requires a supported annual-minus-nine-month calculation.
+DeepWhiz is a suitable Project 2 implementation: Financial Document Intelligence, table-aware hybrid retrieval, for investment analysts. NVIDIA and Tesla across eight reported fiscal periods each provide multi-document, table, temporal, and comparison questions. Fiscal quarter ends differ between issuers. Each company contributes two 10-Ks and six 10-Qs: a 10-K represents a year, not a standalone fourth quarter. Q4 requires a supported annual-minus-nine-month calculation.
 
 The application is a working prototype with offline integration coverage. **The submission is incomplete until real retrieval comparisons and reranking-impact measurements are produced.** There are no established faithfulness, relevance, or latency scores. No production-readiness claim is made.
 

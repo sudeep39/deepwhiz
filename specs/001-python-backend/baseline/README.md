@@ -1,10 +1,10 @@
 # Migration baseline
 
-Captured 2026-10-21 against FinWhiz commit `a5182753366eb08049f0f8456b444e3ba19cc74f`. The migration spec directory was untracked at capture. `source-manifest.json` records exact relevant source bytes, including the dependency lockfile and benchmark. No credentials or user runtime files were captured.
+Captured 2026-10-21 against DeepWhiz commit `a5182753366eb08049f0f8456b444e3ba19cc74f`. The migration spec directory was untracked at capture. `source-manifest.json` records exact relevant source bytes, including the dependency lockfile and benchmark. No credentials or user runtime files were captured.
 
 ## Verification
 
-| Command from FinWhiz root | Result |
+| Command from DeepWhiz root | Result |
 | --- | --- |
 | `npm.cmd test` | 40 passed, 0 failed |
 | `.venv\Scripts\python.exe -m unittest discover -s scripts -p 'test_*.py'` | 16 passed |

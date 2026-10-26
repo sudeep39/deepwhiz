@@ -39,17 +39,22 @@ class GenerationClient:
             system += "\nReturn JSON matching this schema: " + compact(schema.model_json_schema())
         stage_timeout = (
             self.settings.agent_timeout_seconds
-            if schema.__name__ == 'AgentDecision'
+            if schema.__name__ in ('AgentDecision', 'AgentPlan')
             else self.settings.rerank_timeout_seconds
             if schema.__name__ == "Ranking"
+            else self.settings.answer_repair_timeout_seconds
+            if schema.__name__ == "Repair"
             else self.settings.generation_timeout_seconds
         )
+        stage_name = {'Repair': 'Answer repair', 'Ranking': 'Evidence reranking',
+                      'AgentPlan': 'Research planning', 'AgentDecision': 'Evidence assessment'}.get(schema.__name__, 'Answer generation')
+        timeout_message = f'{stage_name} timed out. Retry the request.'
         started = time.monotonic()
 
         def time_left():
             left = stage_timeout - (time.monotonic() - started)
             if left <= 0:
-                raise AppError("Model generation timed out. Retry or select fewer periods.", 504)
+                raise AppError(timeout_message, 504)
             return remaining(left)
 
         for attempt in range(self.settings.provider_attempts):
@@ -71,10 +76,12 @@ class GenerationClient:
                 operation = {
                     "Ranking": "reranking",
                     "AgentDecision": "evidence_assessment",
+                    "AgentPlan": "research_planning",
                     "Answer": "answer_generation",
                     "Repair": "answer_repair",
                 }.get(schema.__name__, "model_generation")
-                with span(operation, attempt=attempt + 1):
+                with span(operation, attempt=attempt + 1, model=model or self.config.chatModel,
+                          provider=self.config.provider, schema=schema.__name__):
                     output = chain.invoke(
                         [
                             ("system", system),
@@ -130,7 +137,7 @@ class GenerationClient:
                 if attempt == self.settings.provider_attempts - 1:
                     if isinstance(error, (APITimeoutError, httpx.TimeoutException, TimeoutError)):
                         raise AppError(
-                            "Model generation timed out. Retry or select fewer periods.", 504
+                            timeout_message, 504
                         ) from None
                     raise AppError("Provider temporarily unavailable.") from None
                 time.sleep(min(2**attempt, time_left()))

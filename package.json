@@ -1,5 +1,5 @@
 {
-  "name": "finwhiz",
+  "name": "deepwhiz",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -19,7 +19,10 @@
     "export:project": "node scripts/python-command.mjs export-project --apply",
     "test:python": "node scripts/python-command.mjs --test",
     "test:browser": "node scripts/browser-check-python.mjs",
-    "test:browser:legacy": "node scripts/browser-check.mjs"
+    "test:browser:legacy": "node scripts/browser-check.mjs",
+    "test:documents:browser": "node scripts/check-documents-ui.mjs",
+    "test:research:browser": "node scripts/check-research-ui.mjs",
+    "test:proxy": "node --test scripts/frontend-server.test.mjs"
   },
   "engines": {
     "node": ">=22"

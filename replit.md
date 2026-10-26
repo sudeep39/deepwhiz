@@ -1,4 +1,4 @@
-# FinWhiz on Replit
+# DeepWhiz on Replit
 
 ## Run
 

@@ -20,7 +20,7 @@ def project_root():
     for candidate in candidates:
         if (candidate / "experiment.json").is_file() and (candidate / "index.html").is_file():
             return candidate.resolve()
-    raise RuntimeError("Run from the FinWhiz project directory or set FINWHIZ_PROJECT_ROOT.")
+    raise RuntimeError("Run from the DeepWhiz project directory or set FINWHIZ_PROJECT_ROOT.")
 
 
 ROOT = project_root()
@@ -115,21 +115,24 @@ class Settings(BaseSettings):
         Pydantic calls this before validating finwhiz_bootstrap_library."""
         return None if value == '' else value
     node_env: str = ""
+    allowed_origins: list[str] = Field(default_factory=list)
     replit_deployment: str = ""
     finwhiz_data_dir: Path = ROOT / ".runtime-python"
     host: str = "0.0.0.0"
     port: int = 3100
     sec_user_agent: str = ""
+    sec_import_timeout_seconds: float = Field(default=90, gt=0, le=100)
     chat_timeout_seconds: float = Field(default=60, gt=0, le=300)
     vector_timeout_seconds: float = Field(default=8, gt=0, le=60)
     embedding_timeout_seconds: float = Field(default=15, gt=0, le=120)
     generation_timeout_seconds: float = Field(default=30, gt=0, le=120)
+    answer_repair_timeout_seconds: float = Field(default=12, gt=0, le=60)
     rerank_timeout_seconds: float = Field(default=10, gt=0, le=60)
     provider_attempts: int = Field(default=2, ge=1, le=4)
     rerank_max_tokens: int = Field(default=12000, ge=1000)
     answer_max_tokens: int = Field(default=20000, ge=1000)
     agentic_rag_enabled: bool = True
-    agent_max_rounds: int = Field(default=2, ge=0, le=2)
+    agent_max_rounds: int = Field(default=6, ge=0, le=8)
     agent_timeout_seconds: float = Field(default=8, gt=0, le=20)
     agent_max_tokens: int = Field(default=8000, ge=1000, le=20000)
     agent_answer_reserve_seconds: float = Field(default=20, gt=0, le=60)

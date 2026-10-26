@@ -1,12 +1,12 @@
-# FinWhiz Financial Document Intelligence Submission
+# DeepWhiz Financial Document Intelligence Submission
 
 **Week 2 Project: Financial Document Intelligence Pipeline RAG**
 
 **Evaluation date:** October 19, 2026
 
-**Code repository:** https://github.com/sudeep39/FinWhiz
+**Code repository:** https://github.com/sudeep39/DeepWhiz
 
-FinWhiz is a working financial research application that answers questions over uploaded SEC filings using table-aware hybrid retrieval. This submission combines the RAG framework, implementation decisions, measured chunking comparison, reranking impact analysis, and lessons from a balanced 16-trial pilot.
+DeepWhiz is a working financial research application that answers questions over uploaded SEC filings using table-aware hybrid retrieval. This submission combines the RAG framework, implementation decisions, measured chunking comparison, reranking impact analysis, and lessons from a balanced 16-trial pilot.
 
 ## Part 1 The RAG Framework
 
@@ -18,18 +18,18 @@ These are acceptance targets. A live pilot now provides measured retrieval, answ
 
 | Field | Response |
 |---|---|
-| Use case | FinWhiz helps investment analysts investigate revenue, profitability, cash flow, and disclosed business drivers through a conversational web interface. Answers include source citations and server-computed financial calculations. |
+| Use case | DeepWhiz helps investment analysts investigate revenue, profitability, cash flow, and disclosed business drivers through a conversational web interface. Answers include source citations and server-computed financial calculations. |
 | Corpus | The application accepts English SEC 10-K and 10-Q filings in HTML, readable PDF, and TXT formats, with issuer filings published through SEC EDGAR serving as the source of truth. The indexed comparison corpus contains 16 filings across Tesla and NVIDIA; hands-on development testing also examined Tesla's June 30, 2026 10-Q. |
 | Ingestion and cleaning | Users upload filings through the browser, and background workers extract document metadata, remove hidden HTML and non-content markup, and normalize readable text. Table extraction preserves rows, column spans, and reporting-period headers so financial values retain their context. |
 | Ingestion and freshness | New filings enter through explicit uploads, with a weekly operator review policy and an optional SEC freshness check to identify newer filings or amendments. Configured thresholds are a review every seven days and a stale-period flag after 150 days; automatic scheduled ingestion is not enabled. |
 | Chunking and embedding | Fixed narrative chunks use roughly 700 tokens with 100-token overlap; semantic chunks use changes in sentence-embedding similarity, with bounded sizes and overlap. Both strategies use row-aware table splitting with repeated headers and Nebius Qwen/Qwen3-Embedding-8B embeddings at 4,096 dimensions. |
 | Retrieve | Pinecone dense search retrieves the top five matches per company and reporting period, while application-side BM25 retrieves the top 20 keyword matches; reciprocal rank fusion merges the lists. Optional language-model reranking prioritizes combined candidates, and a bounded answer context uses up to 16 chunks, with eligible table chunks expanded to complete parent tables. |
 
-**When evidence is insufficient:** FinWhiz requests clarification for ambiguous questions and returns an insufficient-evidence response when selected filings cannot support an answer. Source-ID validation, numeric checks, signed cash-flow extraction for supported adjustment questions, and server-side calculations reduce citation, accounting-sign, and intermediate-arithmetic errors; they do not guarantee factual entailment.
+**When evidence is insufficient:** DeepWhiz requests clarification for ambiguous questions and returns an insufficient-evidence response when selected filings cannot support an answer. Source-ID validation, numeric checks, signed cash-flow extraction for supported adjustment questions, and server-side calculations reduce citation, accounting-sign, and intermediate-arithmetic errors; they do not guarantee factual entailment.
 
 ## Implementation and prompts
 
-FinWhiz uses a JavaScript frontend, a Node.js API, background ingestion workers, Pinecone, and a local filesystem store. This is a custom code implementation rather than a LangChain/LangGraph or n8n workflow. Nebius Qwen/Qwen3-30B-A3B-Instruct-2507 supplies reranking and answer generation for this evaluation; OpenAI is also supported through a separate compatible index.
+DeepWhiz uses a JavaScript frontend, a Node.js API, background ingestion workers, Pinecone, and a local filesystem store. This is a custom code implementation rather than a LangChain/LangGraph or n8n workflow. Nebius Qwen/Qwen3-30B-A3B-Instruct-2507 supplies reranking and answer generation for this evaluation; OpenAI is also supported through a separate compatible index.
 
 The ingestion pipeline validates files, extracts issuer/form/period metadata, cleans readable content, builds section and table parents, chunks documents, embeds text, and indexes vectors with source metadata. Pinecone stores vectors and metadata; the server's filesystem stores uploads, corpus/job records, BM25 chunks, parent tables, and caches. Consequently, deployments sharing Pinecone do not automatically share their corpus listings or lexical state.
 
@@ -134,7 +134,7 @@ Codex assisted with implementation, regression tests, source checks, benchmark e
 
 ## Reproducibility and supporting assets
 
-- Code: https://github.com/sudeep39/FinWhiz
+- Code: https://github.com/sudeep39/DeepWhiz
 - Corpus SHA-256: `67e4ff2854b22e9d35dadbc10e898f84ae698214ec71324375ba214eca1796c8`
 - Four-question suite SHA-256: `96ea8d01aee04a194c82136ff3198142afef321ff4a9d7503454688d1e59ef3f`
 - Evaluation source revision: `ce241dc5b28c111f3fe4b2f401d816598df5182e`; PREPARATION.json also records source-file hashes, including the storage compression change.

@@ -75,6 +75,23 @@ class AgentDecision(StrictModel):
     query: str = Field(max_length=500)
     source_ids: list[Annotated[str, Field(pattern=r'^S\d+$', max_length=16)]] = Field(max_length=4)
     missing_evidence: list[Annotated[str, Field(max_length=200)]] = Field(max_length=8)
+    task_id: str = Field(default='', max_length=24)
+    target_tickers: list[str] = Field(default_factory=list, max_length=8)
+    filing_dates: list[str] = Field(default_factory=list, max_length=32)
+    retrieval_mode: Literal['hybrid', 'lexical', 'dense'] = 'hybrid'
+    top_k: int = Field(default=5, ge=1, le=15)
+
+
+class ResearchTask(StrictModel):
+    ticker: str = Field(max_length=10)
+    report_date: str = Field(max_length=10)
+    period: str = Field(max_length=24)
+    metric: str = Field(max_length=80)
+    objective: str = Field(max_length=240)
+
+
+class AgentPlan(StrictModel):
+    tasks: list[ResearchTask] = Field(min_length=1, max_length=32)
 
 
 class Sentence(StrictModel):

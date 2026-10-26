@@ -14,7 +14,7 @@ class ResearchRequest(BaseModel):
     validation failures become the established public HTTP 400 messages."""
     model_config = ConfigDict(strict=True)
     question: str = Field(min_length=1, max_length=3000)
-    tickers: list[Ticker] = Field(min_length=1, max_length=4)
+    tickers: list[Ticker] = Field(min_length=1, max_length=8)
     periods: list[str] = Field(default_factory=list, max_length=32)
     strategy: Literal['fixed', 'semantic'] = 'fixed'
     rerank: bool = True

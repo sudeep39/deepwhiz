@@ -1,6 +1,6 @@
 # Separate GitHub project
 
-FinWhiz currently resides inside the shared `ai` workspace. Do not publish that parent folder. Generate a clean, separate root:
+DeepWhiz has its own Git repository in the `deepwhiz` folder. Publish that repository only; do not publish the parent `ai` workspace. To prepare an optional clean export:
 
 ```sh
 node scripts/export-project.mjs
@@ -10,15 +10,15 @@ The timestamped folder under `release/` is suitable for its own Git repository a
 
 Review the export and run `npm ci`, `npm test`, and `npm run test:browser` (installed Edge required). Python tools are optional and require `requirements.txt`. No API keys are needed for offline tests. Do not copy `.env` into Git. No license has been chosen on your behalf.
 
-When publication is requested, run the following **inside the exported folder**; these are future instructions, not actions already performed:
+For a new exported checkout without Git history, the following creates a public repository. The working `deepwhiz` folder already has Git history; do not initialize it again:
 
 ```sh
 git init -b main
 git add .
-git commit -m "Initial FinWhiz financial document intelligence application"
-gh repo create FinWhiz --private --source=. --remote=origin --push
+git commit -m "Initial DeepWhiz financial document intelligence application"
+gh repo create deepwhiz --public --source=. --remote=origin --push
 ```
 
-Choose visibility deliberately. Replit can import the resulting GitHub repository directly; no manually pre-created FinWhiz project is necessary. Configure provider secrets and APP_PASSWORD in the imported app. Require a verified durable FINWHIZ_DATA_DIR before treating hosted uploads as persistent. Do not use Autoscale for this in-process queue.
+Choose visibility deliberately. Replit can import the resulting GitHub repository directly; no manually pre-created DeepWhiz project is necessary. Configure provider secrets and APP_PASSWORD in the imported app. Require a verified durable FINWHIZ_DATA_DIR before treating hosted uploads as persistent. Do not use Autoscale for this in-process queue.
 
 The original-source backup is `.backups/20261019T005620Z/source-before-review.zip`; retain it outside the published repository. No unused source has been discarded in this review.

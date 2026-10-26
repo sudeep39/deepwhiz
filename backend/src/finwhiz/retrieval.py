@@ -60,6 +60,8 @@ def retrieve(
     resolved_scope=None,
     evidence_budget=None,
     local_first=True,
+    retrieval_mode='hybrid',
+    top_k=5,
 ) -> RetrievalResult:
     """Gather authorized evidence for the research graph and agent search tool.
 
@@ -107,7 +109,7 @@ def retrieve(
                         localAnswer=local_answer, localMethod=local_method, retrievalDegraded=False)
     degraded = []
     vector = None
-    if tasks:
+    if tasks and retrieval_mode != 'lexical':
         try:
             with span('query_embedding'):
                 vector = provider.embed([question], purpose='query')[0]
@@ -119,17 +121,18 @@ def retrieve(
 
         def query(task):
             namespace, ticker, period, known = task
-            result = provider.pinecone(
-                "query",
-                dict(
-                    namespace=namespace,
-                    vector=vector,
-                    topK=5,
-                    includeMetadata=False,
-                    includeValues=False,
-                    filter={"ticker": {"$eq": ticker}, "report_date": {"$eq": period}},
-                ),
-            )
+            with span('filing_lookup', ticker=ticker, reportDate=period):
+                result = provider.pinecone(
+                    "query",
+                    dict(
+                        namespace=namespace,
+                        vector=vector,
+                        topK=top_k,
+                        includeMetadata=False,
+                        includeValues=False,
+                        filter={"ticker": {"$eq": ticker}, "report_date": {"$eq": period}},
+                    ),
+                )
             return [
                 {**known[row["id"]], "score": row["score"]}
                 for row in result.get("matches", [])
@@ -148,8 +151,10 @@ def retrieve(
                         if trace:
                             trace.remaining()
                         degraded.append('vector_query_unavailable')
-    with span("bm25"):
-        lexical = LexicalIndex(unique, statistics).score(question, limit=len(unique))
+    lexical = []
+    if retrieval_mode != 'dense':
+        with span("bm25"):
+            lexical = LexicalIndex(unique, statistics).score(question, limit=len(unique))
     merged = fuse([sorted(all_rows, key=lambda r: -r["score"]), lexical], 80)
     anchor_ids = {row['id'] for row in anchors}
     merged = anchors + [row for row in merged if row['id'] not in anchor_ids]
@@ -208,6 +213,6 @@ def retrieve(
         retrievalDegraded=bool(degraded),
         degradationReasons=sorted(set(degraded)),
         missingCoverage=[{'ticker': ticker, 'reportDate': day} for ticker, day in missing],
-        coverageReason=('no_supporting_evidence' if any(pair not in {group(row) for row in selected} for pair in missing)
+        coverageReason=('evidence_budget' if budget <= 0 else 'no_supporting_evidence' if any(pair not in {group(row) for row in selected} for pair in missing)
                         else 'evidence_budget') if missing else None,
     )

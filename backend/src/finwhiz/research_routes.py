@@ -9,6 +9,7 @@ from .research import research
 from .scope import resolve_scope
 from .fiscal import catalog_documents
 from .telemetry import ResearchTrace
+from .evidence_gaps import evidence_gaps
 
 
 class ResearchEndpoints:
@@ -77,11 +78,24 @@ class ResearchEndpoints:
             scoped_jobs = [job for job in ready if job.get('namespaces', {}).get(strategy)]
             documents = await asyncio.to_thread(catalog_documents, scoped_jobs, store)
             resolved = resolve_scope(question.strip(), documents, tickers, periods, history)
+            requested = resolved.get('requestedPeriods', [])
+            import re
+            if resolved['status']=='insufficient_evidence' and requested and all(re.fullmatch(r'\d{4}-(?:Q[1-4]|FY)|\d{4}-\d{2}-\d{2}', p) for p in requested):
+                recovery_periods = list(requested)
+                # Q4 requires annual minus Q3 year-to-date; fetch both dependencies.
+                for p in requested:
+                    if p.endswith('-Q4'):
+                        recovery_periods.append(p[:-2]+'Q3')
+                resolved['recovery'] = dict(companies=resolved['tickers'], periods=1,
+                                             requestedPeriods=list(dict.fromkeys(recovery_periods)))
+            if resolved['status'] == 'insufficient_evidence':
+                resolved['evidenceGaps'] = evidence_gaps(question, resolved)
             if path == '/api/scope':
                 return response(resolved)
             if resolved['status'] != 'resolved':
                 from .research import empty_answer
-                return response({**empty_answer(resolved['status'], resolved['message']), 'scope': resolved})
+                return response({**empty_answer(resolved['status'], resolved['message']), 'scope': resolved,
+                                 **({'evidenceGaps': resolved['evidenceGaps']} if resolved.get('evidenceGaps') else {})})
             if self.active >= 2:
                 raise AppError("Two questions are already processing. Please retry shortly.", 429)
             self.active += 1

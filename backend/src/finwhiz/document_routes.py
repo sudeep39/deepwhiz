@@ -7,11 +7,18 @@ from fastapi.responses import Response
 from .config import ROOT, AppError
 from .storage import now
 from .library import accept_upload
-from .http_helpers import response, public_job, receive_files
+from .http_helpers import response, public_job, receive_files, read_json
 
 
 async def documents(request, path, *, settings, store, jobs):
     config = request.state.ai
+    if path == '/api/sec/import' and request.method == 'POST':
+        if not settings.configured(config):
+            raise AppError('Configure the selected AI provider and PINECONE_API_KEY before importing reports.', 503)
+        from .sec_import import import_reports
+        result = await asyncio.to_thread(import_reports, await read_json(request), settings, config, store, jobs)
+        result['job'] = public_job(result['job'])
+        return response(result, 202 if result['created'] else 200)
     if path == "/api/uploads" and request.method == "POST":
         if not settings.configured(config):
             raise AppError(

@@ -1,4 +1,4 @@
-"""Create Finwhiz's Pinecone index and load embedded JSONL chunks (Python 3.10+).
+"""Create DeepWhiz's Pinecone index and load embedded JSONL chunks (Python 3.10+).
 
 No third-party dependencies. Dry-run by default; --apply enables remote writes.
 This script consumes embeddings; it does not parse HTML or generate embeddings.
