@@ -50,7 +50,7 @@ def create_app(
     tests. Returns the application; startup work runs when its lifespan starts.
     """
     settings = settings or Settings(_env_file=ROOT / ".env")
-    if settings.replit_deployment and not settings.finwhiz_bootstrap_library:
+    if settings.replit_deployment and settings.finwhiz_bootstrap_auto and not settings.finwhiz_bootstrap_library:
         from .bootstrap import DEFAULT_BUNDLE_SHA256
         bundled = ROOT / 'data/recovery/replit-library-v1.json.gz'
         if bundled.is_file():

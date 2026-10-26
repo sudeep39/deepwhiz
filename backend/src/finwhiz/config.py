@@ -106,6 +106,7 @@ class Settings(BaseSettings):
     finwhiz_backend_url: str = ""
     finwhiz_bootstrap_library: Path | None = None
     finwhiz_bootstrap_sha256: str = ""
+    finwhiz_bootstrap_auto: bool = True
 
     @field_validator('finwhiz_bootstrap_library', mode='before')
     @classmethod

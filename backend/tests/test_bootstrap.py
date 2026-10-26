@@ -130,3 +130,26 @@ def test_replit_auto_detects_bundle_without_new_environment_settings(settings, t
     with TestClient(create_app(configured, disable_workers=True, provider_factory=Provider)) as client:
         result = client.get('/api/state', headers={'Authorization': 'Bearer baseline-password'})
         assert result.status_code == 200 and result.json()['recovery']['status'] == 'restored'
+
+
+def test_replit_can_start_empty_without_provider_calls(settings, monkeypatch):
+    from finwhiz.config import Settings
+    monkeypatch.setenv('FINWHIZ_BOOTSTRAP_AUTO', 'false')
+    monkeypatch.setenv('FINWHIZ_BOOTSTRAP_LIBRARY', '')
+    configured = Settings(
+        _env_file=None, replit_deployment='1',
+        finwhiz_data_dir=settings.finwhiz_data_dir,
+        app_password='baseline-password', openai_api_key='',
+        nebius_api_key='', pinecone_api_key='', finwhiz_backend_url='',
+    )
+    assert configured.finwhiz_bootstrap_auto is False
+    assert configured.finwhiz_bootstrap_library is None
+    def forbidden(*args):
+        raise AssertionError('Empty-library startup must not contact providers')
+    with TestClient(create_app(configured, disable_workers=True, provider_factory=forbidden)) as client:
+        assert client.get('/').status_code == 200
+        assert client.get('/api/health').json() == {'ok': True}
+        assert client.get('/api/state').status_code == 401
+        state = client.get('/api/state', headers={'Authorization': 'Bearer baseline-password'})
+        assert state.status_code == 200
+        assert state.json()['documents'] == []
