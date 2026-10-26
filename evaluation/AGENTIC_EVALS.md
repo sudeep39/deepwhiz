@@ -123,3 +123,22 @@ node scripts/check-agent-recovery.mjs
 ```
 
 Set FINWHIZ_BROWSER_BASE to use another local server URL.
+
+
+## Tesla Q2 2026 demonstration questions
+
+The seven questions and source-checked expected results are in
+`evaluation/tesla-q2-2026.json`. Run the offline regression from the repository root:
+
+```sh
+python -m pytest backend/tests/test_tesla_demo.py -q
+```
+
+The 14 cases exercise statement calculations and the complete research graph against
+the original filing artifacts in the bundled recovery snapshot. No API keys or paid
+provider calls are needed. Six numerical questions must complete from local statement
+evidence; the causal question checks retrieval of the disclosed management discussion
+and uses scripted synthesis. This verifies evidence delivery and validation, not live
+model answer quality. The deployed app still needs an indexed Tesla Q2 2026 filing
+under its selected provider; passing these tests does not upload the fixture into the
+application's library.

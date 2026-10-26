@@ -36,3 +36,12 @@ def test_conflicts_request_reconciliation_rather_than_asserting_missing_files():
                          objective='Reported revenue', status='conflicting_values')])
     assert gaps[0]['reason'] == 'conflicting_evidence' and gaps[0]['action'] == 'review'
     assert 'Confirm' in gaps[0]['needed']
+
+
+def test_verified_quarters_are_not_listed_as_missing_and_task_prompts_are_hidden():
+    tasks=[dict(ticker='TSLA', period='2026-Q1', metric='revenue', status='fact_located', objective='Retrieve internal task'),
+           dict(ticker='TSLA', period='2025-Q4', metric='revenue', status='evidence_found', objective='Retrieve internal task')]
+    gaps=evidence_gaps('Compare revenues across four quarters', tasks=tasks, verification_failed=True)
+    assert len(gaps)==1 and '2025-Q4' in gaps[0]['part']
+    assert 'Retrieve internal' not in str(gaps)
+    assert gaps[0]['action']=='review' and 'nine-month' in gaps[0]['needed']

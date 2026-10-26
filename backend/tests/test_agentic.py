@@ -30,7 +30,7 @@ def evidence(*sources):
                 rerankFallback=False, rerankFallbackReason=None)
 
 
-def fixture(settings, monkeypatch, decisions, batches, answer='Revenue was 125 million [S2].'):
+def fixture(settings, monkeypatch, decisions, batches, answer='Revenue was 125 million [S2].', scope_override=None):
     settings = settings.model_copy(update={'finwhiz_data_dir': settings.finwhiz_data_dir / str(uuid.uuid4())})
     store, jobs, job, provider = setup_job(settings)
     ingest(job, store, jobs, provider)
@@ -53,7 +53,7 @@ def fixture(settings, monkeypatch, decisions, batches, answer='Revenue was 125 m
         return dict(status='answered', answer=answer, citation_ids=['S2'] if '[S2]' in answer else ['S1'],
                     chart=empty_chart(), calculations=[])
     provider.structured = structured
-    scope = dict(status='resolved', tickers=['ACME'], filingDates=['2025-03-31'],
+    scope = scope_override or dict(status='resolved', tickers=['ACME'], filingDates=['2025-03-31'],
                  filings=[dict(ticker='ACME', reportDate='2025-03-31')], requestedPeriods=[])
     def run(**kwargs):
         return research(store, jobs.all(), provider, 'What revenue was reported?', ['ACME'],
@@ -230,3 +230,25 @@ def test_new_evidence_gets_budget_priority_without_reusing_source_ids(tmp_path):
     merged, catalog = merge_evidence(store, previous, incoming, None, 10000, catalog)
     assert merged['sources'][0]['id'] == 'S6' and merged['sources'][0]['chunkId'] == 'new'
     assert len(merged['sources']) == 5 and len(catalog) == 6
+
+
+def test_initial_agent_search_covers_all_four_planned_periods(settings, monkeypatch):
+    dates = ['2025-12-31', '2026-03-31', '2026-06-30', '2026-09-30']
+    scope = dict(status='resolved', tickers=['ACME'], filingDates=dates,
+                 filings=[dict(ticker='ACME', reportDate=day) for day in dates], requestedPeriods=[])
+    sources = [{**source(str(i), 'Revenue was 125 million.', id=f'S{i+1}'), 'report_date':day}
+               for i, day in enumerate(dates)]
+    run, provider, queries, _ = fixture(settings, monkeypatch, [decision()], [evidence(*sources)],
+                                      answer='Revenue was 125 million [S1].', scope_override=scope)
+    original = provider.structured
+    def structured(system, payload, schema, model=None):
+        if schema is AgentPlan:
+            return dict(tasks=[dict(ticker='ACME', report_date=day, period=day, metric='revenue',
+                                    objective=f'Find revenue for {day}') for day in dates])
+        return original(system, payload, schema, model)
+    provider.structured = structured
+    run()
+    assert queries[0]['periods'] == dates
+    assert queries[0]['filing_scope'] == {('ACME',day) for day in dates}
+    assert all(day in queries[0]['question'] for day in dates)
+    assert queries[0]['local_first'] is True

@@ -206,16 +206,13 @@ def build_graph():
             'question': state['question'], 'tickers': state['tickers'], 'requestedPeriods': state['periods'],
             'resolvedScope': state.get('scope'), 'history': state['history'][-4:]})) + 1000
         selection = state.get('tool_selection', {})
-        if not state.get('agent_rounds') and state.get('research_plan', {}).get('origin') == 'agent':
-            first = state['research_plan']['tasks'][0]
-            selection = dict(target_tickers=[first['ticker']], filing_dates=[first['report_date']])
         selected_tickers = selection.get('target_tickers') or state['tickers']
         selected_dates = selection.get('filing_dates') or state['periods']
         pairs = {(f['ticker'], f['reportDate']) for f in state['scope']['filings']
                  if f['ticker'] in selected_tickers and (not selected_dates or f['reportDate'] in selected_dates)} if state.get('scope') else None
         query = state['plan'].get('retrievalQuestion', state['question'])
         if not state.get('agent_rounds') and state.get('research_plan', {}).get('origin') == 'agent':
-            query = state['research_plan']['tasks'][0]['objective']
+            query = '\n'.join(t['objective'] for t in state['research_plan']['tasks'])
         result = retrieve(
             store,
             jobs,

@@ -11,8 +11,8 @@ PLAN_SYSTEM = '''Decompose the financial question into independently checkable e
 Return only the AgentPlan schema, no reasoning. Each task must name one authorized ticker,
 one authorized source report_date, the requested financial period (e.g. 2026-Q1),
 a metric and a short evidence objective. Split requested metrics and periods explicitly.
-Use canonical metrics revenue, cost, net_income, automotive_revenue, automotive_cost
-when applicable. Narrative tasks may use another concise metric label.
+Use canonical metrics revenue, cost, net_income, net_income_common, automotive_revenue,
+automotive_cost, regulatory_credits, energy_revenue, energy_cost when applicable. Narrative tasks may use another concise metric label.
 Cover every requested company/period/metric. Comparative columns in an authorized filing
 may support another requested period. Never add a prior year unless requested.
 Do not add scope, source filings, recommendations, facts, numbers, or computed answers.

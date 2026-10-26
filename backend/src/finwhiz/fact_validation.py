@@ -18,6 +18,8 @@ def claim_metric(text):
     # "credit revenue" and "cost of revenue" are compound metric names.
     matches = [m for m in matches if not any(other[0] < m[0] and other[1] >= m[1] for other in matches)]
     _, _, metric = max(matches)
+    if metric in ('cost', 'revenue') and re.search(r'energy generation and storage', text, re.I):
+        return 'energy_' + metric
     return 'automotive_' + metric if metric in ('cost', 'revenue') and re.search(r'automotive', text, re.I) else metric
 
 
@@ -128,8 +130,9 @@ def calculation_bound(calculation, sources):
     gross_profit = operation == 'difference' and bool(re.search(r'gross profit', label, re.I))
     if operation in ('gross_margin', 'gross_margin_excluding_revenue') or gross_profit:
         automotive = bool(re.search(r'automotive', label, re.I))
-        metrics = ['automotive_revenue' if automotive else 'revenue',
-                   'automotive_cost' if automotive else 'cost']
+        energy = bool(re.search(r'energy generation and storage', label, re.I))
+        metrics = ['automotive_revenue' if automotive else 'energy_revenue' if energy else 'revenue',
+                   'automotive_cost' if automotive else 'energy_cost' if energy else 'cost']
         if operation == 'gross_margin_excluding_revenue':
             metrics.append('regulatory_credits' if automotive else 'excluded_revenue')
     else:

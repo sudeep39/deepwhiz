@@ -30,6 +30,7 @@ METRICS = {
     'automotive_revenue': r'total automotive revenues?',
     'automotive_cost': r'total automotive cost of revenues?',
     'regulatory_credits': r'automotive regulatory credits(?: revenues?)?',
+    'energy_revenue': r'energy generation and storage(?: segment revenue)?',
     'revenue': r'(?:total )?revenues?|net sales',
     'cost': r'(?:total )?cost of (?:revenues?|sales)',
     'net_income_common': r'net income attributable to (?:common stockholders|common shareholders)',
@@ -118,7 +119,7 @@ def table_facts(source):
         elif re.search(r'gross profit|operating expenses|income from operations', cells[0], re.I):
             cost_section = False
         if cost_section and metric not in ('cost', 'automotive_cost'):
-            metric += '_cost'
+            metric = 'energy_cost' if metric == 'energy_revenue' else metric + '_cost'
         for column, cell in enumerate(cells[1:], 1):
             if column >= len(years) or column >= len(headers) or not re.fullmatch(r'20\d{2}', years[column]):
                 continue
@@ -136,7 +137,7 @@ def facts_payload(sources):
     unique = {}
     for source in sources:
         for fact in table_facts(source):
-            if fact.metric not in METRICS:
+            if fact.metric not in METRICS and fact.metric != 'energy_cost':
                 continue
             key = fact.source_id, fact.ticker, fact.period, fact.metric, fact.value, fact.unit
             unique.setdefault(key, asdict(fact))

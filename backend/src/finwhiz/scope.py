@@ -82,7 +82,7 @@ def resolve_scope(question, documents, tickers, periods=None, history=None):
         for word in re.findall(r'\b(first|second|third|fourth|1st|2nd|3rd|4th)\s+(?:fiscal\s+)?quarter\b', text, re.I):
             if words[word.lower()] not in quarters:
                 quarters.append(words[word.lower()])
-        half = re.search(r'\b(first|second)\s+half\b|\bH([12])\b', text, re.I)
+        half = re.search(r'\b(first|second)\s+(?:half|six months)\b|\bH([12])\b', text, re.I)
         half_num = (int(half[2]) if half[2] else (1 if half[1].lower() == 'first' else 2)) if half else None
         dates = re.findall(r'\b\d{4}-\d{2}-\d{2}\b', text)
         for month, day, year in re.findall(r'\b(' + '|'.join(MONTHS) + r')\s+(\d{1,2}),?\s+(\d{4})\b', text, re.I):
@@ -126,7 +126,7 @@ def resolve_scope(question, documents, tickers, periods=None, history=None):
             pairs = [(year, q) for year in years for q in quarters]
         if half:
             pairs += [(year, 2 if half == 1 else 4) for year in years]
-        requested = [f'{year}-Q{q}' for year, q in pairs] + ([f'{year}-H{half}' for year in years] if half else [])
+        requested = ([f'{year}-Q{q}' for year, q in pairs] if quarters else []) + ([f'{year}-H{half}' for year in years] if half else [])
         source_filing = re.search(r'\b(?:using|from|based on|according to)\b[^?.]{0,100}?\bQ([1-4])\s+((?:19|20|21)\d{2})\s+filing\b', question, re.I)
         for ticker in selected:
             for year, q in pairs:
@@ -139,6 +139,14 @@ def resolve_scope(question, documents, tickers, periods=None, history=None):
                 if not candidates and q == 1:
                     # Q2 YTD minus Q2 can support Q1 without a separate Q1 filing.
                     candidates = [doc for doc in known if doc['ticker'] == ticker and doc['fiscal_year'] == year and doc['fiscal_quarter'] == 2 and doc.get('form') == '10-Q']
+                if not candidates or (periods and not any(d['reportDate'] in periods for d in candidates)):
+                    # A later same-quarter 10-Q can contain the requested prior-year
+                    # comparative columns. Retrieval/validation must verify those cells.
+                    comparative = [doc for doc in known if doc['ticker'] == ticker and doc['fiscal_year'] == year + 1
+                                   and doc['fiscal_quarter'] == q and doc.get('form') == '10-Q'
+                                   and (not periods or doc['reportDate'] in periods)]
+                    if comparative:
+                        candidates = comparative
                 if not candidates:
                     status = 'needs_clarification' if any(not d.get('fiscal_year') for d in available if d['ticker'] == ticker) else 'insufficient_evidence'
                     return response(status, f'No verified filing mapping is available for {ticker} fiscal Q{q} {year}. Select an available filing date or upload the required filing.', selected, requested=requested)

@@ -29,10 +29,11 @@ def evidence_gaps(question, scope=None, tasks=None, missing=None, decision=None,
         requirement = REQUIREMENTS.get(metric, f'disclosures supporting: {task.get("objective") or metric.replace("_", " ")}')
         location = ' · '.join(str(task[k]) for k in ('ticker', 'period') if task.get(k))
         conflicting = task.get('status') == 'conflicting_values'
-        gaps.append(dict(part=f'{location}: {task.get("objective") or metric.replace("_", " ")}',
-                         reason='conflicting_evidence' if conflicting else 'missing_evidence',
+        indexed = any(f.get('ticker') == task.get('ticker') and f.get('reportDate') == task.get('report_date') for f in scope.get('filings', []))
+        gaps.append(dict(part=f'{location}: {metric.replace("_", " ")}',
+                         reason='conflicting_evidence' if conflicting else 'retrieval_gap' if indexed else 'missing_evidence',
                          needed=f'{"Confirm the correct values and accounting basis for" if conflicting else "Provide"} {requirement}. Include the original statement or note from the relevant filing.',
-                         action='review' if conflicting else 'upload'))
+                         action='review' if conflicting or indexed else 'upload'))
     for fact in decision.get('missing_evidence', []):
         gaps.append(dict(part=str(fact)[:240], reason='missing_evidence',
                          needed=f'Provide the relevant statement, note or management discussion disclosing {str(fact)[:240]} for the selected companies and periods.', action='upload'))
@@ -41,6 +42,23 @@ def evidence_gaps(question, scope=None, tasks=None, missing=None, decision=None,
         companies = ', '.join(scope.get('tickers', []))
         gaps.append(dict(part=scope.get('message') or question, reason='filing_coverage',
                          needed=f'Provide filings for {companies or "the requested company"}{" covering " + periods if periods else " and the requested period"}, with identifiable fiscal period ends.{(' A Q4 derivation requires the annual filing and the matching nine-month statement.' if any(str(p).endswith('-Q4') for p in scope.get('requestedPeriods', [])) else '')}', action='upload'))
+    if not gaps and tasks:
+        for task in tasks:
+            if task.get('status') == 'fact_located':
+                continue
+            metric = task.get('metric', 'requested evidence')
+            location = ' / '.join(str(task[k]) for k in ('ticker', 'period') if task.get(k))
+            requirement = REQUIREMENTS.get(metric, 'the relevant statement or disclosure')
+            if re.search(r'gross margin', question, re.I):
+                requirement += '; ' + REQUIREMENTS['gross_margin']
+            if re.search(r'\bdrivers?|why\b', question, re.I):
+                requirement += '; management discussion explaining performance drivers'
+            if re.search(r'\brisks?\b', question, re.I):
+                requirement += '; risk-factor disclosures'
+            needed = f'The selected filing was retrieved, but {requirement} could not be verified. Review or reprocess that filing; a missing document has not been established.'
+            if str(task.get('period', '')).endswith('-Q4') and metric == 'revenue':
+                needed += ' Standalone Q4 revenue requires full-year revenue minus matching nine-month revenue, with consistent units and accounting scope.'
+            gaps.append(dict(part=f'{location}: {metric.replace("_", " ")}', reason='verification_failed', needed=needed, action='review'))
     if not gaps:
         # Finding passages does not establish that they support every requested claim.
         objectives = list(dict.fromkeys(' · '.join(str(t.get(k, '')) for k in ('ticker', 'period', 'objective') if t.get(k)) for t in tasks if t.get('objective')))
@@ -53,6 +71,8 @@ def evidence_gaps(question, scope=None, tasks=None, missing=None, decision=None,
             requirements.append('management discussion or notes explicitly explaining the requested performance drivers')
         if re.search(r'\brisks?\b', question, re.I):
             requirements.append('the relevant risk-factor disclosures or management discussion of those risks')
+        if tasks and all(t.get('status') == 'fact_located' for t in tasks):
+            return [dict(part='Final answer verification', reason='verification_failed', needed='Requested facts were located, but the final response did not pass validation. Retry with the existing filings; additional uploads have not been established as necessary.', action='retry')]
         needed = '; '.join(dict.fromkeys(requirements))
         gaps.append(dict(part='; '.join(objectives[:4]) or question,
                          reason='verification_failed' if verification_failed else 'missing_evidence',

@@ -1,0 +1,12 @@
+{
+  "description": "Regression questions checked against the bundled Tesla Q2 2026 filing; monetary values are in millions. Offline checks validate evidence and calculations, not live model quality.",
+  "cases": [
+    {"id": "energy-margin-drivers", "question": "Why did Tesla's energy generation and storage gross margin decline in Q2 2026 despite higher revenue?", "expected": {"revenue": [3139, 2789], "cost": [2499, 1943], "disclosedDrivers": ["sales mix", "warranty"]}},
+    {"id": "q1-derived-from-q2", "question": "Using Tesla's Q2 2026 filing, what were Q1 2026 total revenue and net income attributable to common stockholders, and how did Q2 compare?", "expected": {"q1Revenue": 22387, "q1CommonNetIncome": 477, "q2Revenue": 28236, "q2CommonNetIncome": 1114}},
+    {"id": "free-cash-flow", "question": "Defining free cash flow as operating cash flow minus purchases of property and equipment excluding finance leases, net of sales, what was Tesla's free cash flow for the first six months of 2026 and 2025? Did stronger operating cash flow produce higher free cash flow?", "expected": {"operatingCashFlow": [8634, 4696], "purchasesMagnitude": [8282, 3886], "freeCashFlow": [352, 810], "higherFreeCashFlow": false}},
+    {"id": "energy-gross-profit", "question": "Tesla's energy generation and storage revenue increased in Q2 2026. Did its gross profit also improve?", "expected": {"grossProfit2026": 640, "grossProfit2025": 846, "improved": false}},
+    {"id": "automotive-credit-margins", "question": "How did automotive regulatory credits affect Tesla's Q2 automotive gross margin in 2026 versus 2025? Calculate margins including and excluding credit revenue, keeping reported automotive costs unchanged.", "expected": {"automotiveRevenue": [20516, 16661], "automotiveCost": [17053, 13795], "regulatoryCredits": [146, 439]}},
+    {"id": "regulatory-credit-revenue", "question": "What was Tesla's automotive regulatory credit revenue in Q2 2026 compared with Q2 2025?", "expected": {"credits2026": 146, "credits2025": 439}},
+    {"id": "spacex-reconciliation", "question": "What was the SpaceX equity investment unrealized gain adjustment in Tesla's operating cash flow reconciliation for the first six months of 2026?", "expected": {"adjustment": -1005, "meaning": "Negative noncash reconciliation adjustment; not the investment purchase amount or a cash outflow."}}
+  ]
+}
