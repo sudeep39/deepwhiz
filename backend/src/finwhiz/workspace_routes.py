@@ -2,12 +2,12 @@
 
 import asyncio
 import json
-from .config import ROOT, job_matches
+from .config import ROOT, job_matches, digest
 from .operations import operational_status
 from .http_helpers import response, public_job
 
 
-async def workspace(request, path, *, settings, store, jobs):
+async def workspace(request, path, *, settings, store, jobs, cloud=None):
     config = request.state.ai
     if path == "/api/health":
         return response({"ok": True})
@@ -50,7 +50,8 @@ async def workspace(request, path, *, settings, store, jobs):
                         {**c.model_dump(), "configured": settings.configured(c)}
                         for c in [settings.provider("openai"), settings.provider("nebius")]
                     ],
-                    storageBackend="filesystem",
+                    storageBackend="filesystem+replit-app-storage" if cloud else "filesystem",
+                    libraryProtection=({**cloud.status, **({'status':'pending','message':'New changes are awaiting a verified cloud checkpoint.'} if cloud.signature != digest(all_jobs) and cloud.status.get('status') != 'error' else {})} if cloud else dict(enabled=False,status='unprotected',message='Cloud library protection is not configured. Export a backup before republishing.')),
                     authenticated=bool(settings.app_password),
                     asOf=json.loads((ROOT / "experiment.json").read_text())["as_of"],
                 ),

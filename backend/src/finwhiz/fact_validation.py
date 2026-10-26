@@ -8,6 +8,7 @@ def claim_periods(text):
 
 
 def claim_metric(text):
+    text = text.replace('_', ' ')
     patterns = [(r'regulatory credits?|credit revenue', 'regulatory_credits'),
                 (r'net income attributable to (?:common stockholders|common shareholders)', 'net_income_common'),
                 (r'net income', 'net_income'), (r'automotive sales', 'automotive_sales'),
@@ -18,7 +19,7 @@ def claim_metric(text):
     # "credit revenue" and "cost of revenue" are compound metric names.
     matches = [m for m in matches if not any(other[0] < m[0] and other[1] >= m[1] for other in matches)]
     _, _, metric = max(matches)
-    if metric in ('cost', 'revenue') and re.search(r'energy generation and storage', text, re.I):
+    if metric in ('cost', 'revenue') and re.search(r'energy(?: generation and storage)?', text, re.I):
         return 'energy_' + metric
     return 'automotive_' + metric if metric in ('cost', 'revenue') and re.search(r'automotive', text, re.I) else metric
 
@@ -34,6 +35,7 @@ def numeric_context(text, position):
 
 
 def ordered_periods(text):
+    text = text.replace('_', ' ')
     kind_pattern = r'(?:YTD-Q[1-4]|Q[1-4]|H[12]|FY)'
     kinds = set(re.findall(r'\b' + kind_pattern + r'\b', text, re.I))
     if re.search(r'first (?:six months|half)', text, re.I):
@@ -124,13 +126,14 @@ def bound_value(sources, ids, value, text, unit=None, metric=None):
 
 def calculation_bound(calculation, sources):
     operation, values, label = calculation['operation'], calculation['values'], calculation['label']
+    label = label.replace('_', ' ')
     facts = [f for s in sources if s['id'] in calculation['source_ids'] for f in table_facts(s)]
     if not facts:
         return all(bound_value(sources, calculation['source_ids'], v, label) is not False for v in values)
     gross_profit = operation == 'difference' and bool(re.search(r'gross profit', label, re.I))
     if operation in ('gross_margin', 'gross_margin_excluding_revenue') or gross_profit:
         automotive = bool(re.search(r'automotive', label, re.I))
-        energy = bool(re.search(r'energy generation and storage', label, re.I))
+        energy = bool(re.search(r'energy(?: generation and storage)?', label, re.I))
         metrics = ['automotive_revenue' if automotive else 'energy_revenue' if energy else 'revenue',
                    'automotive_cost' if automotive else 'energy_cost' if energy else 'cost']
         if operation == 'gross_margin_excluding_revenue':

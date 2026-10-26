@@ -129,3 +129,17 @@ Answer repair has its own `ANSWER_REPAIR_TIMEOUT_SECONDS` setting (default 12 se
 Execution paths for new research responses include expandable intermediate outputs: resolved scope, planned tasks, retrieved excerpts, selected actions, unvalidated drafts, repair outputs, and validation results. The delivered response appears last. Evidence snapshots show up to 12 sources with 1,800-character excerpts; long drafts are capped at 12,000 characters, with truncation identified. These are structured outputs, not hidden model reasoning. Output snapshots are excluded from normal application log messages.
 
 Rollout status and implemented hardening are recorded in [the functionality and market-readiness review](docs/CODE_REVIEW.md). This remains a trusted shared workspace. Production requires a strong workspace secret, HTTPS, verified durable storage and restore procedures; public multi-customer use additionally requires individual identity and tenant isolation. Liveness is `/api/health`; configuration/storage readiness is `/api/ready`.
+
+
+Library protection on Replit is available through verified App Storage checkpoints.
+Before republishing an existing instance, preserve its registry, original sources,
+retrieval artifacts and embedding cache; Pinecone alone does not restore its library.
+Follow the [preservation and restore procedure](docs/RUNBOOK.md#preserve-the-deployed-library-before-republishing)
+to seed a checkpoint and enable `FINWHIZ_CLOUD_LIBRARY=true`. The Documents badge
+shows whether protection is configured, pending, failed or verified. The restore path
+preserves existing namespace/vector identities and does not re-embed documents.
+
+The seven Tesla questions were also exercised through FastAPI with the configured
+Qwen model and the recovered deployment corpus. See the [live smoke-test record](evaluation/results/tesla-qwen-smoke-20261025.json)
+for answers, timings and limitations; these results do not imply the published app
+has already been redeployed.

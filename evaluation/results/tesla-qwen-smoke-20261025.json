@@ -1,0 +1,78 @@
+{
+  "testedOn": "2026-10-25",
+  "timezone": "America/New_York",
+  "model": "Qwen/Qwen3-30B-A3B-Instruct-2507",
+  "provider": "nebius",
+  "target": "Local FastAPI with the recovered deployed library, using live model calls",
+  "corpus": "Seven retained Tesla filings from deepwhiz.replit.app; existing IDs and namespaces preserved",
+  "conditions": {
+    "strategy": "semantic",
+    "rerank": true,
+    "company": "TSLA",
+    "periodSelection": "all"
+  },
+  "passed": 7,
+  "total": 7,
+  "documentEmbeddingsCreated": 0,
+  "pineconeWrites": 0,
+  "limits": "Single smoke-test run; not an ablation, comprehensive accuracy benchmark, or confirmation that the published app has been updated.",
+  "cases": [
+    {
+      "id": "energy-margin-drivers",
+      "http": 200,
+      "status": "answered",
+      "answer": "Tesla's energy generation and storage gross margin declined in Q2 2026 despite higher revenue due to a larger increase in cost of revenues compared to revenue. Energy generation and storage revenue increased by $350 million, or 13%, year over year, primarily due to increased Megapack deployments, partially offset by a lower average selling price per unit and a decrease in Powerwall deployments [S4]. However, the cost of energy generation and storage revenue increased by $556 million, or 29%, primarily due to deployment fluctuations, an increase in average cost per MWh driven by sales mix, and unfavorable warranty adjustments [S3]. As a result, gross margin for the energy generation and storage segment decreased from 30.3% in Q2 2025 to 20.4% in Q2 2026 [S3].",
+      "model": "Qwen/Qwen3-30B-A3B-Instruct-2507",
+      "seconds": 18.37,
+      "driversPresent": true
+    },
+    {
+      "id": "q1-derived-from-q2",
+      "http": 200,
+      "status": "answered",
+      "answer": "TSLA 2026-Q1 total revenue: 22,387 millions, calculated as the six-month value minus the Q2 value. [S1]\n\nTSLA 2026-Q1 net income attributable to common stockholders: 477 millions, calculated as the six-month value minus the Q2 value. [S1]\n\nTSLA 2026-Q2 total revenue: 28,236 millions [S1].\n\nTSLA 2026-Q2 net income attributable to common stockholders: 1,114 millions [S1].\n\nTSLA total revenue increased from 2026-Q1 to 2026-Q2.\n\nTSLA net income attributable to common stockholders increased from 2026-Q1 to 2026-Q2.",
+      "model": "Qwen/Qwen3-30B-A3B-Instruct-2507",
+      "seconds": 3.0
+    },
+    {
+      "id": "free-cash-flow",
+      "http": 200,
+      "status": "answered",
+      "answer": "For the first six months of 2026, free cash flow was $352 million: $8,634 million of operating cash flow less $8,282 million of purchases of property and equipment excluding finance leases, net of sales [S3]. For the first six months of 2025, free cash flow was $810 million: $4,696 million of operating cash flow less $3,886 million of purchases of property and equipment excluding finance leases, net of sales [S3]. No. Operating cash flow increased, but free cash flow fell because capital spending increased by more. Free cash flow decreased by $458 million from 2025 to 2026 [S3].",
+      "model": "Qwen/Qwen3-30B-A3B-Instruct-2507",
+      "seconds": 4.76
+    },
+    {
+      "id": "energy-gross-profit",
+      "http": 200,
+      "status": "answered",
+      "answer": "TSLA 2025-Q2 energy generation and storage revenue: 2,789 millions [S1].\n\nTSLA 2026-Q2 energy generation and storage revenue: 3,139 millions [S1].\n\nTSLA energy generation and storage gross profit declined; see the source-bound calculations below.",
+      "model": "Qwen/Qwen3-30B-A3B-Instruct-2507",
+      "seconds": 3.33
+    },
+    {
+      "id": "automotive-credit-margins",
+      "http": 200,
+      "status": "answered",
+      "answer": "With reported total automotive costs unchanged, Credit revenue increased TSLA's calculated margin by 2.24 percentage points in Q2 2025 [S1]. Credit revenue increased TSLA's calculated margin by 0.60 percentage points in Q2 2026 [S1]. For Tesla, Inc. TSLA automotive Q2 2025, gross margin was 17.20% including the excluded revenue and 14.96% excluding it, with reported costs unchanged [S1]. For Tesla, Inc. TSLA automotive Q2 2026, gross margin was 16.88% including the excluded revenue and 16.28% excluding it, with reported costs unchanged [S1].",
+      "model": "Qwen/Qwen3-30B-A3B-Instruct-2507",
+      "seconds": 4.84
+    },
+    {
+      "id": "regulatory-credit-revenue",
+      "http": 200,
+      "status": "answered",
+      "answer": "TSLA 2025-Q2 automotive regulatory credit revenue: 439 millions [S1].\n\nTSLA 2026-Q2 automotive regulatory credit revenue: 146 millions [S1].\n\nTSLA automotive regulatory credit revenue declined from 2025-Q2 to 2026-Q2.",
+      "model": "Qwen/Qwen3-30B-A3B-Instruct-2507",
+      "seconds": 3.24
+    },
+    {
+      "id": "spacex-reconciliation",
+      "http": 200,
+      "status": "answered",
+      "answer": "For the first six months of 2026, the SpaceX equity investment unrealized gain adjustment was −$1,005 million (a negative adjustment). It was deducted when reconciling net income to operating cash flow to remove the noncash gain [S1].",
+      "model": "Qwen/Qwen3-30B-A3B-Instruct-2507",
+      "seconds": 2.34
+    }
+  ]
+}

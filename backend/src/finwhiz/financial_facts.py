@@ -42,6 +42,7 @@ MONTHS = {name: i for i, name in enumerate(
 
 def metric_name(label):
     label = re.sub(r'\s+', ' ', label.strip()).rstrip(':')
+    label = re.sub(r'\s+\(\d+\)$', '', label)
     return next((name for name, pattern in METRICS.items() if re.fullmatch(pattern, label, re.I)),
                 re.sub(r'\W+', '_', label.lower()).strip('_'))
 
@@ -89,6 +90,7 @@ def table_facts(source):
     lines = source.get('text', source.get('excerpt', '')).splitlines()
     facts, headers, years = [], [], []
     cost_section = False
+    segment = None
     unit_matches = set(re.findall(r'\bin\s+(thousands|millions|billions)\b', '\n'.join(lines), re.I))
     unit = next(iter(unit_matches)).lower() if len(unit_matches) == 1 else 'unknown'
     preceding = ''
@@ -113,7 +115,12 @@ def table_facts(source):
             continue
         if not years or not cells[0] or number(cells[0]) is not None:
             continue
+        if re.fullmatch(r'(Automotive|Energy generation and storage) segment', cells[0], re.I) and all(number(c) is None for c in cells[1:]):
+            segment = 'energy' if cells[0].lower().startswith('energy') else 'automotive_services'
+            continue
         metric = metric_name(cells[0])
+        if segment and metric in ('revenue', 'cost'):
+            metric = segment + '_' + metric
         if re.fullmatch(r'(?:total )?cost of (?:revenues?|sales)', cells[0], re.I) and all(number(c) is None for c in cells[1:]):
             cost_section = True
         elif re.search(r'gross profit|operating expenses|income from operations', cells[0], re.I):

@@ -227,6 +227,7 @@ def build_graph():
             evidence_budget=max(0, budget - overhead),
             local_first=not state['retrieval_only'] and not state.get('agent_rounds') and (not state.get('scope') or pairs == {(f['ticker'],f['reportDate']) for f in state['scope']['filings']}),
             retrieval_mode=selection.get('retrieval_mode', 'hybrid'), top_k=selection.get('top_k', 5),
+            calculation_question=state['question'],
         )
         if not state.get('agent_rounds') and state.get('scope'):
             represented = {(s['ticker'], s['report_date']) for s in result.get('sources', [])}

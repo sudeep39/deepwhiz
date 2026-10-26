@@ -118,6 +118,11 @@ class Settings(BaseSettings):
     node_env: str = ""
     allowed_origins: list[str] = Field(default_factory=list)
     replit_deployment: str = ""
+    finwhiz_cloud_library: bool = False
+    finwhiz_storage_bucket_id: str = ''
+    finwhiz_library_prefix: str = Field(default='deepwhiz/library-v1', pattern=r'^[A-Za-z0-9][A-Za-z0-9/_-]{0,120}$')
+    finwhiz_library_restore_path: str = ''
+    finwhiz_library_restore_sha256: str = ''
     finwhiz_data_dir: Path = ROOT / ".runtime-python"
     host: str = "0.0.0.0"
     port: int = 3100

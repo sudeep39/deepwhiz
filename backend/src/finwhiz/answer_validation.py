@@ -4,7 +4,7 @@ import re
 from datetime import datetime
 from .config import AppError
 from .finance import calculate, supports_number, finalize_margins, empty_chart
-from .fact_validation import bound_value, calculation_bound, numeric_context, ordered_periods
+from .fact_validation import bound_value, calculation_bound, numeric_context, ordered_periods, claim_metric
 from .financial_facts import table_facts
 
 
@@ -48,17 +48,25 @@ def coverage_issues(answer, sources, scope):
     for ticker in scope.get('tickers', []):
         company_sources = [s for s in cited if s.get('ticker') == ticker]
         periods = {f.period for s in company_sources for f in table_facts(s)}
+        periods.update(p[:4] for p in list(periods))
         for source in company_sources:
+            if source.get('report_date'):
+                periods.add(source['report_date'])
             year, quarter = source.get('fiscal_year'), source.get('fiscal_quarter')
             if year and quarter:
                 periods.add(f'{year}-Q{str(quarter).lstrip("Qq")}')
+                periods.add(str(int(year)))
             elif ticker == 'TSLA' and re.fullmatch(r'\d{4}-\d{2}-\d{2}', source.get('report_date', '')):
                 day = source['report_date']
                 periods.add(f'{day[:4]}-Q{(int(day[5:7])-1)//3+1}')
+                periods.add(day[:4])
         for period in scope.get('requestedPeriods', []):
             if period not in periods:
                 # Explicit source-column differences may derive Q1/Q4. The
                 # operand validator independently checks their period order.
+                if not re.fullmatch(r'\d{4}-(?:Q[1-4]|H[12]|FY|YTD-Q[1-4])', period):
+                    issues.append(f'The cited evidence does not cover {ticker} {period}.')
+                    continue
                 year, kind = period.split('-', 1)
                 inputs = {'Q1': {f'{year}-H1', f'{year}-Q2'},
                           'Q4': {f'{year}-FY', f'{year}-YTD-Q3'}}.get(kind, set())
@@ -73,11 +81,15 @@ def coverage_issues(answer, sources, scope):
 def supports_narrative_number(sources, ids, value, unit=None, claim='', metric=None):
     """Allow exact unit conversions, never rounding or new arithmetic claims."""
     scales = {'thousand': 1e3, 'million': 1e6, 'billion': 1e9, 'trillion': 1e12}
-    bound = bound_value(sources, ids, value, claim, unit, metric)
-    if bound is not None:
-        return bound
+    # Validate each citation independently: a table that lacks a disclosed
+    # narrative percentage must not veto a supporting MD&A citation.
     for source in sources:
         if source['id'] not in ids:
+            continue
+        bound = bound_value([source], [source['id']], value, claim, unit, metric)
+        if bound is True:
+            return True
+        if bound is False:
             continue
         text = source['text']
         if not unit:
@@ -112,8 +124,29 @@ def validation_issues(answer, sources, validate_numeric=True):
     )
     inline = re.findall(r"\[(S\d+)\]", answer["answer"])
     issues = []
+    # Models sometimes label a comparison with only the current quarter. Add
+    # the other operand's period only when both existing literal inputs have
+    # unique source-bound metric/company/period/unit identities. Ambiguity
+    # still fails normal validation; no value or operation is changed.
+    for calculation in answer.get('calculations', []):
+        label=calculation['label']
+        periods=ordered_periods(label)
+        if calculation['operation'] not in ('percent_change','difference') or len(periods)!=1 or len(calculation['values'])!=2:
+            continue
+        metric=claim_metric(label)
+        facts=[f for s in sources if s['id'] in calculation['source_ids'] for f in table_facts(s)]
+        matches=[{(f.ticker,f.period,f.unit) for f in facts if f.metric==metric and f.value==value}
+                 for value in calculation['values']]
+        if all(len(m)==1 for m in matches):
+            first,second=[next(iter(m)) for m in matches]
+            if first[0]==second[0] and first[2]==second[2] and first[1]==periods[0] and first[1]!=second[1]:
+                calculation['label']=label+' versus '+second[1]
     if answer["status"] == "answered" and validate_numeric:
         financial_text = re.sub(r'(?m)^\s*(?:[-*]\s+)?\d+[.)]\s+', '', answer['answer'])
+        # Keep trailing citations with the preceding claim while checking it.
+        # The rendered answer remains unchanged for exact-excerpt recovery.
+        financial_text = re.sub(r'([.!?])\s+((?:\[S\d+\]\s*)+)',
+                                lambda m: ' '+m[2].strip()+m[1]+' ', financial_text)
         for sentence in re.split(r"(?<=[.!?])\s+(?=[A-Z\[])", financial_text):
             ids = re.findall(r"\[(S\d+)\]", sentence)
             if not ids:

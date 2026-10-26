@@ -8,6 +8,10 @@ let initialLibraryProviderResolved=false;
 let documentsJobPage=0,documentsFilePage=0;
 function showDocumentDetails(text){$('document-details-content').textContent=text;$('document-details-dialog').showModal();}
 $('close-document-details').onclick=()=>$('document-details-dialog').close();
+$('library-protection').onclick=()=>{
+  const protection=state?.config?.libraryProtection;
+  showDocumentDetails((protection?.message||'Library protection is not configured.')+'\n\n'+(protection?.lastBackupAt?'Last verified checkpoint: '+protection.lastBackupAt+'\n\n':'')+'Before republishing, preserve the library registry, original sources and retrieval artifacts. Pinecone vectors alone cannot restore the complete library. Configure Replit App Storage and FINWHIZ_CLOUD_LIBRARY=true for automatic verified checkpoints.');
+};
 $('documents-help').onclick=()=>showDocumentDetails('Fetch SEC reports using company names or tickers separated by commas. Choose the latest report or a number of quarters. A 10-K covers the annual year-end period.\n\nUpload HTML, PDF or TXT filings, up to 20 MB each and 32 files per batch. Review each file using Previous and Next before uploading.\n\nProcessing continues on the server after you leave this page. Review batches in Activity, and retry any failed jobs.');
 function selectDocumentPanel(panel){
   $('documents-view').dataset.documentPanel=panel;
@@ -232,6 +236,9 @@ async function refresh(){
     }
   }
   state=updated;
+  const protection=state.config?.libraryProtection;
+  $('library-protection').textContent=protection?.status==='current'?'BACKUP VERIFIED':protection?.status==='error'?'BACKUP FAILED':protection?.enabled?'BACKUP PENDING':'BACKUP NOT CONFIGURED';
+  $('library-protection').title=protection?.message||'Download a library backup before republishing.';
   selectedProvider=state.config.aiProvider||selectedProvider||'openai';$('ai-provider').value=selectedProvider;
   // Do not display legacy catalog-only company entries from an older server.
   // A company and period must have a corresponding completed-upload document.

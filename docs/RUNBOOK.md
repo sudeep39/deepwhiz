@@ -84,3 +84,65 @@ The download reader enforces per-response and existing batch limits, and failed
 imports remove staged source blobs. Retry only after the earlier request has ended.
 
 Before external rollout, complete the remaining gates in [the current review](CODE_REVIEW.md).
+
+
+## Preserve the deployed library before republishing
+
+A Pinecone index is not the complete library. Keep the job registry, exact namespace
+and source IDs, original filings, chunks, parent tables and embedding caches as well.
+The persistence code never creates embeddings or writes/deletes Pinecone records.
+
+1. Before replacing an older deployment, set `FINWHIZ_SHARED_BACKEND_PASSWORD` in
+   your local `.env` to that deployment's workspace password. Do not commit it.
+   Run the read-only rescue utility against the actual deployed origin:
+
+   ```powershell
+   python scripts/backup-deployed-library.py --url https://deepwhiz.replit.app --to .backups/NEW_BACKUP_DIRECTORY
+   ```
+
+   It downloads source files and existing vector values, reconstructs Python parent
+   tables, verifies their identities, and creates a snapshot. It does not re-embed.
+   Keep this backup off the deployment disk. It covers ready jobs; ingestion must
+   finish first. Non-Python parser libraries require their original recovery bundle.
+
+2. Create/select a Replit App Storage bucket. Keep its bucket ID and library prefix
+   stable across publications. The official SDK is installed by `requirements.txt`.
+   Set `FINWHIZ_STORAGE_BUCKET_ID` to its ID (or use the app's default bucket), and
+   keep `FINWHIZ_LIBRARY_PREFIX=deepwhiz/library-v1`.
+
+3. Upload the verified portable `deepwhiz-library.zip` to the Replit **workspace**.
+   Do not commit it to GitHub. Seed App Storage before republishing:
+
+   ```sh
+   python scripts/protect-library.py --archive deepwhiz-library.zip --sha256 VERIFIED_ARCHIVE_SHA256
+   ```
+
+   This verifies every archived object, uploads an immutable checkpoint, reads it
+   back to verify its checksum, and only then updates the latest checkpoint pointer.
+   A checkpoint missing previously protected job IDs cannot replace the pointer.
+
+4. Set `FINWHIZ_CLOUD_LIBRARY=true` in the published app secrets, then republish.
+   On startup, an empty registry is restored from the verified cloud checkpoint
+   before workers start. A nonempty registry is never overwritten. Restore preserves
+   the existing namespaces and embedding cache; there is no automatic re-indexing.
+
+5. The Documents badge must read **BACKUP VERIFIED** after uploads finish. Automatic
+   checkpoints run once ingestion is idle and the registry changes. The badge reads
+   pending or unconfigured when protection is not current; do not republish then.
+   Authenticated `POST /api/library/checkpoint` forces a new checkpoint, and
+   `GET /api/library/export` downloads a portable archive for off-platform retention.
+   `GET /api/state` includes nonsecret `config.libraryProtection` status.
+
+This is for one Reserved VM/library owner. An in-progress ingestion batch is not
+checkpointed as complete. Missing source/retrieval artifacts, upload/download errors
+or failed checksums prevent a new checkpoint from replacing the previous one. These
+protections cannot restore vectors deleted directly in Pinecone; the rescue utility
+also retains their values locally so a separate, reviewed vector restore can reuse
+those values without an embedding model call.
+
+For an offline one-time restore into an empty runtime, set
+`FINWHIZ_LIBRARY_RESTORE_PATH` to a portable archive and
+`FINWHIZ_LIBRARY_RESTORE_SHA256` to its verified checksum. For a normal hosted
+installation prefer App Storage; setting a local runtime path alone is not durable.
+
+Replit SDK reference: https://docs.replit.com/features/sdks/object-storage-python-sdk

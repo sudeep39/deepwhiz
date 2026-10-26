@@ -69,10 +69,26 @@ def create_app(
     pending_research = set()
     from .research_routes import ResearchEndpoints
     research_endpoints = ResearchEndpoints(settings, store, jobs, pool, pending_research)
+    from .library_persistence import CloudLibrary, protect_loop, pack_library, restore_library
+    from .config import digest
+    cloud = CloudLibrary(settings) if settings.finwhiz_cloud_library else None
 
     @asynccontextmanager
     async def lifespan(app):
         with runtime_lock(store.directory):
+            if settings.finwhiz_library_restore_path and not jobs.all():
+                from pathlib import Path
+                archive = Path(settings.finwhiz_library_restore_path)
+                archive = archive if archive.is_absolute() else ROOT/archive
+                data = await asyncio.to_thread(archive.read_bytes)
+                if digest(data) != settings.finwhiz_library_restore_sha256:
+                    raise AppError('Library restore checksum mismatch; no registry changes were made.')
+                await asyncio.to_thread(restore_library, data, store, jobs)
+            if cloud:
+                await asyncio.to_thread(cloud.restore,store,jobs)
+                records = jobs.all()
+                if records and not any(j['status'] in ('queued','processing') for j in records):
+                    await asyncio.to_thread(cloud.checkpoint,store,jobs)
             if settings.finwhiz_bootstrap_library:
                 from .bootstrap import recover_empty_library
                 path = settings.finwhiz_bootstrap_library
@@ -92,9 +108,13 @@ def create_app(
                 )
             )
             app.state.worker_task = task
+            protection_task = asyncio.create_task(protect_loop(cloud,store,jobs)) if cloud else None
             try:
                 yield
             finally:
+                if protection_task:
+                    protection_task.cancel()
+                    await asyncio.gather(protection_task,return_exceptions=True)
                 if task:
                     task.cancel()
                     try:
@@ -186,8 +206,8 @@ def create_app(
         except AppError as error:
             result = response({"error": str(error)}, error.status)
         except Exception as error:
-            logger.error("request failed id=%s type=%s", request_id, type(error).__name__)
-            result = response({"error": "The request could not be completed."}, 502)
+            logger.exception("request failed id=%s type=%s", request_id, type(error).__name__)
+            result = response({"error": f"The request could not be completed. Reference: {request_id}. Retry; if it persists, check the server log for this reference.", "requestId": request_id}, 502)
         finally:
             if tracked_mutation:
                 app.state.active_mutations -= 1
@@ -202,6 +222,17 @@ def create_app(
             (time.monotonic() - started) * 1000,
         )
         return result
+
+    @app.get('/api/library/export')
+    async def export_library():
+        data,_ = await asyncio.to_thread(pack_library,store,jobs)
+        return Response(data,media_type='application/zip',headers={'Content-Disposition':'attachment; filename="deepwhiz-library.zip"','Cache-Control':'no-store'})
+
+    @app.post('/api/library/checkpoint')
+    async def checkpoint_library():
+        if not cloud:
+            raise AppError('Enable FINWHIZ_CLOUD_LIBRARY with a Replit App Storage bucket before protecting the library. Download a library export before republishing.',409)
+        return response(await asyncio.to_thread(cloud.checkpoint,store,jobs,True))
 
     @app.exception_handler(AppError)
     async def application_error(request, error):
@@ -259,7 +290,7 @@ def create_app(
     from functools import partial
     from .workspace_routes import workspace
     from .document_routes import documents
-    register_routes(app, workspace=partial(workspace, settings=settings, store=store, jobs=jobs),
+    register_routes(app, workspace=partial(workspace, settings=settings, store=store, jobs=jobs, cloud=cloud),
                     documents=partial(documents, settings=settings, store=store, jobs=jobs),
                     research=research_endpoints, maintenance=deduplicate_route, fallback=static_route)
     return app

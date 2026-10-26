@@ -26,6 +26,10 @@ def test_frozen_http_contracts(settings):
             )
             assert result.status_code == case["status"], case["name"]
             expected=case['body']
+            if isinstance(expected,dict) and 'config' in expected:
+                expected={**expected,'config':{**expected['config'],'libraryProtection':{
+                    'enabled':False,'status':'unprotected',
+                    'message':'Cloud library protection is not configured. Export a backup before republishing.'}}}
             assert result.json() == expected, case["name"]
             for key, value in case["headers"].items():
                 assert result.headers.get(key) == value, (case["name"], key)

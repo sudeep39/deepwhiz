@@ -62,6 +62,7 @@ def retrieve(
     local_first=True,
     retrieval_mode='hybrid',
     top_k=5,
+    calculation_question=None,
 ) -> RetrievalResult:
     """Gather authorized evidence for the research graph and agent search tool.
 
@@ -99,10 +100,11 @@ def retrieve(
             (job["namespaces"][strategy], ticker, period, known) for ticker, period in groups
         )
     unique = list({r['id']: r for r in eligible}.values())
-    anchors = local_tables(store, unique, question)
+    exact_question = calculation_question or question
+    anchors = local_tables(store, unique, exact_question)
     if local_first and anchors:
         local_sources = [{'id': f'S{i+1}', 'chunkId': row['id'], **row['metadata']} for i, row in enumerate(anchors)]
-        local_answer, local_method = try_calculation(question, local_sources, resolved_scope)
+        local_answer, local_method = try_calculation(exact_question, local_sources, resolved_scope)
         if local_answer:
             return dict(sources=local_sources, ranking=[{'chunkId': r['id'], **r['metadata']} for r in anchors],
                         candidate_count=len(anchors), rerankFallback=False, rerankFallbackReason=None,
