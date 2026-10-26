@@ -1,10 +1,10 @@
-run = "FINWHIZ_BACKEND_URL= FINWHIZ_BOOTSTRAP_LIBRARY= PORT=5000 python run.py serve"
+run = "FINWHIZ_BACKEND_URL= FINWHIZ_BOOTSTRAP_LIBRARY=data/recovery/deepwhiz-retained-library-v1.json.gz FINWHIZ_BOOTSTRAP_SHA256=ac6fa0d5f88e564977863565a91f1fdea76160184e62cbbee32866873db38555 PORT=5000 python run.py serve"
 entrypoint = "run.py"
 modules = ["python-3.12", "nodejs-20", "web"]
 
 [deployment]
 deploymentTarget = "vm"
-run = ["sh", "-c", "FINWHIZ_BACKEND_URL= FINWHIZ_BOOTSTRAP_LIBRARY= FINWHIZ_BOOTSTRAP_AUTO=false PORT=5000 python run.py serve"]
+run = ["sh", "-c", "FINWHIZ_BACKEND_URL= FINWHIZ_BOOTSTRAP_LIBRARY=data/recovery/deepwhiz-retained-library-v1.json.gz FINWHIZ_BOOTSTRAP_SHA256=ac6fa0d5f88e564977863565a91f1fdea76160184e62cbbee32866873db38555 FINWHIZ_BOOTSTRAP_AUTO=false PORT=5000 python run.py serve"]
 ignorePorts = false
 
 [[ports]]
@@ -35,5 +35,5 @@ outputType = "webview"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "FINWHIZ_BACKEND_URL= FINWHIZ_BOOTSTRAP_LIBRARY= PORT=5000 python run.py serve"
+args = "FINWHIZ_BACKEND_URL= FINWHIZ_BOOTSTRAP_LIBRARY=data/recovery/deepwhiz-retained-library-v1.json.gz FINWHIZ_BOOTSTRAP_SHA256=ac6fa0d5f88e564977863565a91f1fdea76160184e62cbbee32866873db38555 PORT=5000 python run.py serve"
 waitForPort = 5000

@@ -42,7 +42,7 @@ Python source to apply this behavior to the shared Replit instance.
 
 The Python backend provides an authenticated preview/apply API for merging fully duplicate ingestion jobs while preserving source links. See [duplicate-merge API and deployment instructions](docs/DEDUPLICATION_API.md).
 
-Replit startup now restores the known retained library automatically when its registry is empty, using a bundled verified snapshot and existing Pinecone vectors. Deploy `data/recovery/replit-library-v1.json.gz` with the code. See [automatic library recovery](docs/LIBRARY_RECOVERY.md).
+Replit startup restores the seven retained DeepWhiz Tesla filings automatically when its registry is empty, using a verified snapshot and existing Pinecone vectors. Deploy `data/recovery/deepwhiz-retained-library-v1.json.gz` with the code; recovery creates no new embeddings. See [automatic library recovery](docs/LIBRARY_RECOVERY.md).
 
 Browser uploads support HTML/HTM, readable PDF and TXT, up to 32 files, 20 MB/file and 100 MB/batch. Metadata is extracted from contents where available; explicit hints fill missing ticker/form/period fields. A saved upload receives HTTP 202; cleanup, chunking, embedding and indexing continue in the backend. The company selector, period filters and chat become available only when ready.
 

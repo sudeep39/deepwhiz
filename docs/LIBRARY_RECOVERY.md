@@ -1,3 +1,30 @@
+# Current DeepWhiz deployment recovery
+
+The authoritative Replit launch command now restores
+`data/recovery/deepwhiz-retained-library-v1.json.gz` into an **empty** registry.
+It contains the seven retained Tesla filings (2025 Q1/Q2/Q3 and annual, plus 2026
+Q1/Q2/Q3), source artifacts, parent tables and 2,416 existing vector identities.
+It preserves the original job, file and namespace IDs. It contains public SEC data,
+not credentials or embedding values. Its SHA-256 is
+`ac6fa0d5f88e564977863565a91f1fdea76160184e62cbbee32866873db38555`.
+
+Recovery verifies the snapshot and retained Pinecone namespace counts, restores the
+local registry and retrieval artifacts, and creates **zero embeddings** with **zero
+Pinecone vector writes**. A nonempty registry is left unchanged. Keep the existing
+Pinecone key, Nebius index/model configuration and this packaged file when publishing.
+Pull the latest code and republish to apply the updated launch command.
+
+This snapshot recovers these known seven documents across publications. **Subsequent
+uploads need App Storage checkpoints** to survive another publication; the snapshot
+is not a replacement for continuous persistence. Follow the protection procedure in
+`docs/RUNBOOK.md`, and require the Documents badge to read BACKUP VERIFIED before
+republishing after adding new filings. The full private backup, including cached and
+exact vector values, is retained locally under `.backups/` and is not published.
+
+---
+
+The following documents the older Finwhiz recovery bundle, retained for compatibility.
+
 # Automatic recovery of the deployed Replit library
 
 The Python deployment had an empty SQLite registry, while Pinecone still contained 3,332 retained Replit vectors. This is a missing local artifact/registry problem, not missing embeddings.

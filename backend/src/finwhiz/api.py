@@ -51,11 +51,15 @@ def create_app(
     """
     settings = settings or Settings(_env_file=ROOT / ".env")
     if settings.replit_deployment and settings.finwhiz_bootstrap_auto and not settings.finwhiz_bootstrap_library:
-        from .bootstrap import DEFAULT_BUNDLE_SHA256
-        bundled = ROOT / 'data/recovery/replit-library-v1.json.gz'
-        if bundled.is_file():
-            settings = settings.model_copy(update={'finwhiz_bootstrap_library': bundled,
-                                                   'finwhiz_bootstrap_sha256': DEFAULT_BUNDLE_SHA256})
+        from .bootstrap import DEFAULT_BUNDLE_SHA256, RETAINED_BUNDLE_SHA256
+        candidates = [('data/recovery/deepwhiz-retained-library-v1.json.gz', RETAINED_BUNDLE_SHA256),
+                      ('data/recovery/replit-library-v1.json.gz', DEFAULT_BUNDLE_SHA256)]
+        for name, checksum in candidates:
+            bundled = ROOT / name
+            if bundled.is_file():
+                settings = settings.model_copy(update={'finwhiz_bootstrap_library': bundled,
+                                                       'finwhiz_bootstrap_sha256': checksum})
+                break
     if settings.finwhiz_backend_url:
         raise AppError('A shared backend is configured. Use restart.cmd to start its local frontend instead of creating another library owner.')
     store = Storage(settings.finwhiz_data_dir)

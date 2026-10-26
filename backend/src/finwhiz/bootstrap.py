@@ -8,6 +8,7 @@ from .config import AIConfig, AppError, compact, digest
 from .storage import now
 
 DEFAULT_BUNDLE_SHA256 = '84e0f0b08f6bbe46d3b0891ed6003aeabe568e98e85dcb0923f7ac1c3b07b7d9'
+RETAINED_BUNDLE_SHA256 = 'ac6fa0d5f88e564977863565a91f1fdea76160184e62cbbee32866873db38555'
 
 
 def load_bundle(path, expected_sha256):
